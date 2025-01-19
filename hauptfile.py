@@ -25,3 +25,16 @@ st.write("Hier erscheinen personalisierte Filmempfehlungen.")
 # Statistiken
 st.subheader("📊 Statistiken")
 st.write("Visualisierungen zu Bewertungen und Genres kommen hier hin.")
+
+dummy_movies = [
+    {"title": "Inception", "genre": "Sci-Fi", "year": 2010, "rating": 8.8},
+    {"title": "The Dark Knight", "genre": "Action", "year": 2008, "rating": 9.0},
+    {"title": "Interstellar", "genre": "Sci-Fi", "year": 2014, "rating": 8.6},
+    {"title": "Parasite", "genre": "Thriller", "year": 2019, "rating": 8.6},
+    {"title": "Joker", "genre": "Drama", "year": 2019, "rating": 8.4},
+]
+
+st.subheader("🎥 Verfügbare Filme")
+st.write("Hier sind einige Filme, die du bewerten kannst:")
+st.table(dummy_movies)
+
