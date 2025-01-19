@@ -1,5 +1,5 @@
 import streamlit as st
-
+import requests
 
 # Titel und Beschreibung
 st.title("🎥 Movie Recommender App")
