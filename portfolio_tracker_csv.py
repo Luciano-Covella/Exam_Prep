@@ -91,7 +91,10 @@ if uploaded_file is not None:
         st.header("📈 Performance & Risk Analytics (since Buy Date)")
 
         returns = []
-        benchmark = yf.Ticker("^GSPC").history(start=df["Buy Date"].min(), end=datetime.today())["Close"].pct_change()
+       # Calculate Benchmark returns (SP500, "^GSPC")
+        start_date = pd.to_datetime(df["Buy Date"]).min().date()
+        benchmark = yf.Ticker("^GSPC").history(start=start_date, end=datetime.today().date())["Close"].pct_change()
+
 
         # For each stock, calculate returns and metrics
         for ticker, history in historical_data.items():
