@@ -53,4 +53,4 @@ if uploaded_file is not None:
         st.error(f"Fehler beim Verarbeiten der Datei: {e}")
 
 else:
-    st.info("Bitte lade eine CSV-Datei hoch, um zu starten.")
+    st.info("Bitte lade eine CSV-Datei hoch, um zu starten.") 
