@@ -2,55 +2,87 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import matplotlib.pyplot as plt
+import numpy as np
+from datetime import datetime
 
-st.set_page_config(page_title="Portfolio Tracker", layout="centered")
-st.title("📊 Portfolio Tracker mit CSV Upload")  
+st.set_page_config(page_title="Portfolio Analyzer", layout="wide")
+st.title("📊 Portfolio Analyzer (Snapshot + Analytics)")
 
-st.write("Bitte lade deine Portfolio CSV hoch (Ticker, Menge, Kaufpreis):")
+st.write("Lade dein Portfolio CSV hoch (Ticker, Menge, Kaufpreis):")
 
 uploaded_file = st.file_uploader("CSV Datei hochladen", type=["csv"])
 
 if uploaded_file is not None:
-    try:
-        df = pd.read_csv(uploaded_file)
-        st.success("Datei erfolgreich geladen!")
+    df = pd.read_csv(uploaded_file)
 
-        # Prüfen ob notwendige Spalten vorhanden sind
-        if not all(col in df.columns for col in ["Ticker", "Menge", "Kaufpreis"]):
-            st.error("Fehler: Die CSV-Datei muss die Spalten 'Ticker', 'Menge' und 'Kaufpreis' enthalten.")
-        else:
-            # Live Preise abrufen
-            prices = []
-            for ticker in df["Ticker"]:
-                try:
-                    stock = yf.Ticker(ticker)
-                    price = stock.history(period="1d")["Close"].iloc[-1]
-                    prices.append(price)
-                except:
-                    prices.append(None)
+    if not all(col in df.columns for col in ["Ticker", "Menge", "Kaufpreis"]):
+        st.error("Fehler: Die CSV-Datei muss die Spalten 'Ticker', 'Menge' und 'Kaufpreis' enthalten.")
+    else:
+        prices = []
+        histories = {}
 
-            df["Aktueller Preis"] = prices
-            df["Wert"] = df["Aktueller Preis"] * df["Menge"]
-            df["Gewinn/Verlust"] = (df["Aktueller Preis"] - df["Kaufpreis"]) * df["Menge"]
+        st.write("📥 Live Preise werden geladen...")
 
-            st.write("### 📈 Portfolio Übersicht")
-            st.dataframe(df)
+        for ticker in df["Ticker"]:
+            stock = yf.Ticker(ticker)
+            hist = stock.history(period="6mo")
+            histories[ticker] = hist
 
-            total_value = df["Wert"].sum()
-            total_gain = df["Gewinn/Verlust"].sum()
+            try:
+                price = hist["Close"].iloc[-1]
+                prices.append(price)
+            except:
+                prices.append(None)
 
-            st.write(f"**Gesamtwert des Portfolios:** € {round(total_value, 2)}")
-            st.write(f"**Gesamter Gewinn/Verlust:** € {round(total_gain, 2)}")
+        df["Aktueller Preis"] = prices
+        df["Wert"] = df["Aktueller Preis"] * df["Menge"]
+        df["Gewinn/Verlust"] = (df["Aktueller Preis"] - df["Kaufpreis"]) * df["Menge"]
 
-            # Pie Chart
-            st.write("### 📊 Portfolio Verteilung")
-            fig, ax = plt.subplots()
-            ax.pie(df["Wert"], labels=df["Ticker"], autopct='%1.1f%%', startangle=140)
-            ax.axis("equal")
-            st.pyplot(fig)
+        total_value = df["Wert"].sum()
+        total_gain = df["Gewinn/Verlust"].sum()
 
-    except Exception as e:
-        st.error(f"Fehler beim Verarbeiten der Datei: {e}")
+        st.header("📌 Portfolio Übersicht")
+        st.dataframe(df)
+
+        st.write(f"**Gesamtwert:** € {round(total_value, 2)}")
+        st.write(f"**Gesamter Gewinn/Verlust:** € {round(total_gain, 2)}")
+
+        # Pie Chart
+        st.write("### 📊 Portfolio Verteilung")
+        fig, ax = plt.subplots()
+        ax.pie(df["Wert"], labels=df["Ticker"], autopct='%1.1f%%', startangle=140)
+        ax.axis("equal")
+        st.pyplot(fig)
+
+        # === Erweiterung: Analytics ===
+        st.header("📈 Performance & Risiko Analyse")
+
+        returns = []
+
+        for ticker, hist in histories.items():
+            hist["Return"] = hist["Close"].pct_change()
+            returns.append(hist["Return"])
+
+            st.write(f"**{ticker} Volatilität (letzte 6 Monate):** {round(hist['Return'].std() * np.sqrt(252), 4)}")
+
+        if returns:
+            combined_returns = pd.concat(returns, axis=1)
+            combined_returns.columns = histories.keys()
+            portfolio_return = combined_returns.mean(axis=1)
+
+            sharpe_ratio = portfolio_return.mean() / portfolio_return.std() * np.sqrt(252)
+
+            st.write(f"**Portfolio Sharpe Ratio (6 Monate):** {round(sharpe_ratio, 3)}")
+
+            st.write("### 📅 Portfolio Performance Verlauf")
+            portfolio_cum_return = (1 + portfolio_return).cumprod()
+
+            fig2, ax2 = plt.subplots()
+            ax2.plot(portfolio_cum_return.index, portfolio_cum_return.values)
+            ax2.set_title("Portfolio kumulierte Performance")
+            ax2.set_xlabel("Datum")
+            ax2.set_ylabel("Kumulierte Rendite")
+            st.pyplot(fig2)
 
 else:
-    st.info("Bitte lade eine CSV-Datei hoch, um zu starten.") 
+    st.info("Bitte lade eine CSV-Datei hoch.")
