@@ -6,26 +6,31 @@ import numpy as np
 from datetime import datetime
 
 st.set_page_config(page_title="Portfolio Analyzer", layout="wide")
-st.title("📊 Portfolio Analyzer (Snapshot + Analytics)")
+st.title("📊 Portfolio Analyzer (Snapshot + Analytics + Buy Date)")
 
-st.write("Lade dein Portfolio CSV hoch (Ticker, Menge, Kaufpreis):")
+st.write("Lade dein Portfolio CSV hoch (Ticker, Menge, Kaufpreis, Kaufdatum):")
 
 uploaded_file = st.file_uploader("CSV Datei hochladen", type=["csv"])
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 
-    if not all(col in df.columns for col in ["Ticker", "Menge", "Kaufpreis"]):
-        st.error("Fehler: Die CSV-Datei muss die Spalten 'Ticker', 'Menge' und 'Kaufpreis' enthalten.")
+    if not all(col in df.columns for col in ["Ticker", "Menge", "Kaufpreis", "Kaufdatum"]):
+        st.error("Fehler: Die CSV-Datei muss die Spalten 'Ticker', 'Menge', 'Kaufpreis' und 'Kaufdatum' enthalten.")
     else:
         prices = []
         histories = {}
 
         st.write("📥 Live Preise werden geladen...")
 
-        for ticker in df["Ticker"]:
+        for index, row in df.iterrows():
+            ticker = row["Ticker"]
+            buy_date = pd.to_datetime(row["Kaufdatum"])
+            today = datetime.today()
+
             stock = yf.Ticker(ticker)
-            hist = stock.history(period="6mo")
+
+            hist = stock.history(start=buy_date, end=today)
             histories[ticker] = hist
 
             try:
@@ -55,7 +60,7 @@ if uploaded_file is not None:
         st.pyplot(fig)
 
         # === Erweiterung: Analytics ===
-        st.header("📈 Performance & Risiko Analyse")
+        st.header("📈 Performance & Risiko Analyse (ab Kaufdatum)")
 
         returns = []
 
@@ -63,7 +68,7 @@ if uploaded_file is not None:
             hist["Return"] = hist["Close"].pct_change()
             returns.append(hist["Return"])
 
-            st.write(f"**{ticker} Volatilität (letzte 6 Monate):** {round(hist['Return'].std() * np.sqrt(252), 4)}")
+            st.write(f"**{ticker} Volatilität (seit Kaufdatum):** {round(hist['Return'].std() * np.sqrt(252), 4)}")
 
         if returns:
             combined_returns = pd.concat(returns, axis=1)
@@ -72,9 +77,9 @@ if uploaded_file is not None:
 
             sharpe_ratio = portfolio_return.mean() / portfolio_return.std() * np.sqrt(252)
 
-            st.write(f"**Portfolio Sharpe Ratio (6 Monate):** {round(sharpe_ratio, 3)}")
+            st.write(f"**Portfolio Sharpe Ratio (seit Kaufdatum):** {round(sharpe_ratio, 3)}")
 
-            st.write("### 📅 Portfolio Performance Verlauf")
+            st.write("### 📅 Portfolio Performance Verlauf (seit Kaufdatum)")
             portfolio_cum_return = (1 + portfolio_return).cumprod()
 
             fig2, ax2 = plt.subplots()
