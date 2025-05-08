@@ -4,7 +4,7 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Portfolio Tracker", layout="centered")
-st.title("📊 Portfolio Tracker mit CSV Upload")
+st.title("📊 Portfolio Tracker mit CSV Upload") 
 
 st.write("Bitte lade deine Portfolio CSV hoch (Ticker, Menge, Kaufpreis):")
 
