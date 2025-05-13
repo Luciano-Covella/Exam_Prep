@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime
 from scipy.stats import linregress
 
-# Configure Streamlit page
+# Configure Streamlit page 
 st.set_page_config(page_title="Portfolio Analyzer", layout="wide")
 
 # Sidebar menu
