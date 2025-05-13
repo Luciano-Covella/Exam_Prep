@@ -1,163 +1,157 @@
-# Import required libraries
-import streamlit as st                    # Web interface library
-import pandas as pd                       # Data handling and CSV reading
-import yfinance as yf                     # Fetching financial and market data
-import matplotlib.pyplot as plt           # Plotting and visualization
-import numpy as np                        # Numerical computations (returns, ratios)
-from datetime import datetime             # Working with date and time
-from scipy.stats import linregress        # Statistical regression (used to calculate Beta)
+import streamlit as st
+import pandas as pd
+import yfinance as yf
+import matplotlib.pyplot as plt
+import numpy as np
+from datetime import datetime
+from scipy.stats import linregress
+from io import StringIO
 
 # Configure Streamlit page
 st.set_page_config(page_title="Portfolio Analyzer", layout="wide")
 
-# Title of the web app
-st.title("\U0001F4CA Portfolio Analyzer (Snapshot + Analytics + Metrics)")
+# Sidebar Navigation (Burger-Menü)
+with st.sidebar:
+    st.title("📊 Portfolio Menu")
+    menu = st.radio(
+        "Navigation",
+        ["📁 Upload CSV", "📈 Portfolio Overview", "📉 Performance & Risk Analytics"]
+    )
 
-# File uploader prompt
-st.write("Upload your Portfolio CSV file (columns: Ticker, Shares, Buy Price, Buy Date)")
-uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+# Session-State vorbereiten
+if "portfolio_file" not in st.session_state:
+    st.session_state.portfolio_file = None
+    st.session_state.portfolio_filename = None
 
-# Helper function: Calculate CAGR (Compound Annual Growth Rate)
-def calculate_cagr(start_value, end_value, periods):
-    return (end_value / start_value) ** (1 / periods) - 1
+# ============ CSV Upload ============
+if menu == "📁 Upload CSV":
+    st.title("📁 Upload Portfolio CSV")
+    st.info("Upload a CSV with columns: Ticker, Shares, Buy Price, Buy Date")
 
-# Helper function: Calculate maximum drawdown from a return series
-def calculate_max_drawdown(series):
-    cumulative = (1 + series).cumprod()           # Calculate cumulative return curve
-    peak = cumulative.cummax()                    # Find rolling maximum
-    drawdown = (cumulative - peak) / peak         # Calculate drawdown from peak
-    return drawdown.min()                         # Return the worst (lowest) drawdown
+    uploaded = st.file_uploader("Upload CSV File", type=["csv"])
+    if uploaded:
+        # Datei-Inhalt lesen und speichern (als Bytes)
+        st.session_state.portfolio_file = uploaded.read()
+        st.session_state.portfolio_filename = uploaded.name
+        st.success("✅ File uploaded successfully. Use the sidebar to continue.")
 
-# If file is uploaded
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)  # Load CSV data into DataFrame
+# ============ Datei einlesen ============
+file_content = st.session_state.get("portfolio_file", None)
 
-    # Check if required columns exist
-    if not all(col in df.columns for col in ["Ticker", "Shares", "Buy Price", "Buy Date"]):
-        st.error("CSV must contain: Ticker, Shares, Buy Price, Buy Date")
-    else:
-        # Convert Buy Date column to datetime
-        df["Buy Date"] = pd.to_datetime(df["Buy Date"])
+if file_content:
+    try:
+        decoded = StringIO(file_content.decode("utf-8"))
+        df = pd.read_csv(decoded)
 
-        # Prepare containers
-        current_prices = []             # Stores latest price per asset
-        historical_data = {}            # Stores historical prices for each asset
+        if df.empty:
+            st.error("❌ The uploaded file is empty.")
+            st.stop()
+    except Exception as e:
+        st.error(f"❌ Failed to read CSV: {str(e)}")
+        st.stop()
 
-        st.write("\U0001F4C5 Fetching historical and current prices...")
+    # Spalten prüfen
+    required_cols = ["Ticker", "Shares", "Buy Price", "Buy Date"]
+    if not all(col in df.columns for col in required_cols):
+        st.error("❌ CSV must contain: Ticker, Shares, Buy Price, Buy Date")
+        st.stop()
 
-        # Loop through portfolio positions
-        for index, row in df.iterrows():
-            ticker = row["Ticker"]
-            buy_date = row["Buy Date"]
-            today = datetime.today()
+    # Vorbereitung
+    df["Buy Date"] = pd.to_datetime(df["Buy Date"])
+    current_prices = []
+    historical_data = {}
 
-            stock = yf.Ticker(ticker)                       # Load ticker
-            history = stock.history(start=buy_date, end=today)  # Get data from buy date to today
-            historical_data[ticker] = history               # Save full history
+    st.write("⏳ Fetching historical and current prices...")
 
-            # Try to get the latest price
-            try:
-                price = history["Close"].iloc[-1]           # Last closing price
-                current_prices.append(price)
-            except:
-                current_prices.append(None)                 # In case of data error
+    for _, row in df.iterrows():
+        ticker = row["Ticker"]
+        buy_date = row["Buy Date"]
+        today = datetime.today()
 
-        # Calculate live stats
-        df["Current Price"] = current_prices
-        df["Value"] = df["Current Price"] * df["Shares"]
-        df["Profit/Loss"] = (df["Current Price"] - df["Buy Price"]) * df["Shares"]
+        stock = yf.Ticker(ticker)
+        history = stock.history(start=buy_date, end=today)
+        historical_data[ticker] = history
 
-        total_value = df["Value"].sum()
-        total_gain = df["Profit/Loss"].sum()
+        try:
+            current_prices.append(history["Close"].iloc[-1])
+        except:
+            current_prices.append(None)
 
-        # ----------------------
-        # Portfolio Overview
-        # ----------------------
-        st.header("\U0001F4CB Portfolio Overview")
+    # Berechnungen
+    df["Current Price"] = current_prices
+    df["Value"] = df["Current Price"] * df["Shares"]
+    df["Profit/Loss"] = (df["Current Price"] - df["Buy Price"]) * df["Shares"]
+
+    total_value = df["Value"].sum()
+    total_gain = df["Profit/Loss"].sum()
+
+    # ============ 📈 Portfolio Overview ============
+    if menu == "📈 Portfolio Overview":
+        st.title("📈 Portfolio Overview")
         st.dataframe(df)
 
-        # Display totals
+        st.subheader("💰 Totals")
         st.write(f"**Total Portfolio Value:** €{round(total_value, 2)}")
         st.write(f"**Total Profit/Loss:** €{round(total_gain, 2)}")
 
-        # Pie chart: allocation by value
-        st.write("### \U0001F4C8 Allocation by Value")
+        st.subheader("📊 Allocation by Value")
         fig, ax = plt.subplots()
         ax.pie(df["Value"], labels=df["Ticker"], autopct='%1.1f%%', startangle=140)
         ax.axis("equal")
         st.pyplot(fig)
 
-        # ----------------------
-        # Performance & Risk Analytics
-        # ----------------------
-        st.write("## \U0001F4CA Performance and Risk Analytics Overview")
-        st.write("""
-        This section shows performance indicators and risk metrics:
-        - Per asset: Volatility, Max Drawdown, Beta to SP500
-        - Entire portfolio: Sharpe, Sortino, Max Drawdown, CAGR
+    # ============ 📉 Performance & Risk Analytics ============
+    elif menu == "📉 Performance & Risk Analytics":
+        st.title("📉 Performance and Risk Analytics")
+
+        st.markdown("""
+        This section shows:
+        - Per Asset: Volatility, Max Drawdown, Beta vs S&P500
+        - Whole Portfolio: Sharpe Ratio, Sortino Ratio, Max Drawdown, CAGR
         """)
 
         returns = []
-
-        # Benchmark: SP500 (^GSPC)
-        start_date = df["Buy Date"].min().date()    # earliest buy date in portfolio
+        start_date = df["Buy Date"].min().date()
         benchmark = yf.Ticker("^GSPC").history(start=start_date, end=datetime.today().date())["Close"].pct_change()
 
-        # Per-asset analytics using expanders
         for ticker, history in historical_data.items():
             history["Return"] = history["Close"].pct_change()
             returns.append(history["Return"])
 
-            # Volatility (annualized)
             volatility = history["Return"].std() * np.sqrt(252)
-
-            # Max Drawdown
             max_dd = calculate_max_drawdown(history["Return"])
 
-            # Beta vs SP500
             aligned = pd.concat([history["Return"], benchmark], axis=1).dropna()
             if not aligned.empty:
                 slope, *_ = linregress(aligned.iloc[:, 1], aligned.iloc[:, 0])
             else:
                 slope = np.nan
 
-            # Display inside expander
-            with st.expander(f"\U0001F4C9 {ticker} - Risk Metrics"):
+            with st.expander(f"📌 {ticker} Metrics"):
                 st.write("**Volatility (Annualized):**", round(volatility, 4))
                 st.write("**Max Drawdown:**", round(max_dd, 4))
-                st.write("**Beta vs SP500:**", round(slope, 4))
+                st.write("**Beta vs S&P500:**", round(slope, 4))
 
-        # ----------------------
-        # Portfolio-wide analytics
-        # ----------------------
         if returns:
             combined_returns = pd.concat(returns, axis=1).mean(axis=1)
 
-            # Sharpe Ratio
-            sharpe_ratio = combined_returns.mean() / combined_returns.std() * np.sqrt(252)
-
-            # Sortino Ratio (downside deviation)
+            sharpe = combined_returns.mean() / combined_returns.std() * np.sqrt(252)
             downside = combined_returns[combined_returns < 0].std() * np.sqrt(252)
-            sortino_ratio = combined_returns.mean() / downside if downside else np.nan
+            sortino = combined_returns.mean() / downside if downside else np.nan
+            max_dd = calculate_max_drawdown(combined_returns)
 
-            # Max Drawdown
-            portfolio_max_dd = calculate_max_drawdown(combined_returns)
-
-            # CAGR
             days = (combined_returns.index[-1] - combined_returns.index[0]).days
             years = days / 365.25
             cumulative_return = (1 + combined_returns).prod()
             cagr = calculate_cagr(1, cumulative_return, years)
 
-            # Display metrics
-            st.write("### \U0001F4E6 Portfolio Performance Summary")
-            st.metric("Sharpe Ratio", round(sharpe_ratio, 3))
-            st.metric("Sortino Ratio", round(sortino_ratio, 3))
-            st.metric("Max Drawdown", round(portfolio_max_dd, 3))
+            st.subheader("📦 Portfolio Summary")
+            st.metric("Sharpe Ratio", round(sharpe, 3))
+            st.metric("Sortino Ratio", round(sortino, 3))
+            st.metric("Max Drawdown", round(max_dd, 3))
             st.metric("CAGR", f"{round(cagr * 100, 2)}%")
 
-            # Cumulative performance chart
-            st.write("### \U0001F4C5 Portfolio Cumulative Performance")
+            st.subheader("📈 Cumulative Return")
             cumulative = (1 + combined_returns).cumprod()
             fig2, ax2 = plt.subplots()
             ax2.plot(cumulative.index, cumulative.values)
@@ -166,5 +160,12 @@ if uploaded_file is not None:
             ax2.set_ylabel("Cumulative Return")
             st.pyplot(fig2)
 
-else:
-    st.info("Please upload a CSV file to continue.")
+# ------------------- Helper Functions -------------------
+def calculate_cagr(start_value, end_value, periods):
+    return (end_value / start_value) ** (1 / periods) - 1
+
+def calculate_max_drawdown(series):
+    cumulative = (1 + series).cumprod()
+    peak = cumulative.cummax()
+    drawdown = (cumulative - peak) / peak
+    return drawdown.min()
