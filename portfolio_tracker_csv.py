@@ -114,7 +114,7 @@ if uploaded_file is not None:
             # Max Drawdown
             max_dd = calculate_max_drawdown(history["Return"])
 
-            # Beta vs SP500
+            # Beta vs SP500 
             aligned = pd.concat([history["Return"], benchmark], axis=1).dropna()
             if not aligned.empty:
                 slope, *_ = linregress(aligned.iloc[:, 1], aligned.iloc[:, 0])
