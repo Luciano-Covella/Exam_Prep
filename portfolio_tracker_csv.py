@@ -35,6 +35,9 @@ with st.sidebar:
         
     if "last_updated" in st.session_state:
             st.caption(f"Last updated: {st.session_state['last_updated']}")
+    if "portfolio_filename" in st.session_state:
+            st.caption(f"File: {st.session_state['portfolio_filename']}")
+
 
 # ---------- Initialize session state (temporary memory) ----------
 
