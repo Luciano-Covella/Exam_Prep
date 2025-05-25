@@ -177,8 +177,16 @@ if file_content:
             ax2.set_xlabel("Date")  # X-axis
             ax2.set_ylabel("Cumulative Return")  # Y-axis
             st.pyplot(fig2)  # Show chart
-  # ---------- Insight Summary Section ----------
+# ---------- Insight Summary Section ----------
 if file_content and not df.empty:
+    st.write("Current columns:", df.columns.tolist())  # Debug line
+
+    if "Total Return" in df.columns:
+        with st.expander("Key Portfolio Insights Summary"):
+            try:
+                # Your summary logic here...
+
+if file_content and not df.empty and "Total Return" in df.columns:
     with st.expander("Key Portfolio Insights Summary"):
         try:
             num_assets = df["Ticker"].nunique()
