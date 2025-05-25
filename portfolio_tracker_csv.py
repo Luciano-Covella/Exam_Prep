@@ -31,7 +31,7 @@ with st.sidebar:
     st.title("📊 Portfolio Menu")  # Sidebar title
     menu = st.radio(  # Create radio buttons for page navigation
         "Navigation",
-        ["📁 Upload CSV", "📈 Portfolio Overview", "📉 Performance & Risk Analytics"]
+        ["📁 Upload CSV", "📈 Portfolio Overview", "📉 Performance & Risk Analytics"] ) 
 
         if "last_updated" in st.session_state:
         st.caption(f"Last updated: {st.session_state['last_updated']}")
