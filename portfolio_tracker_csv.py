@@ -177,4 +177,36 @@ if file_content:
             ax2.set_xlabel("Date")  # X-axis
             ax2.set_ylabel("Cumulative Return")  # Y-axis
             st.pyplot(fig2)  # Show chart
-  
+  # ---------- Insight Summary Section ----------
+if file_content and not df.empty:
+    with st.expander("Key Portfolio Insights Summary"):
+        try:
+            num_assets = df["Ticker"].nunique()
+
+            best_asset = df.loc[df["Total Return"].idxmax(), "Ticker"]
+            best_return = round(df["Total Return"].max(), 2)
+
+            worst_asset = df.loc[df["Total Return"].idxmin(), "Ticker"]
+            worst_return = round(df["Total Return"].min(), 2)
+
+            total_value_sum = df["Value"].sum()
+            total_return_sum = df["Total Return"].sum()
+            total_dividends_sum = df["Dividends"].sum()
+
+            avg_dividend_yield = (
+                round((total_dividends_sum / total_value_sum) * 100, 2)
+                if total_value_sum != 0 else 0
+            )
+
+            st.markdown(f"""
+            - Total Portfolio Value: €{round(total_value_sum, 2)}
+            - Total Return (P/L + Dividends): €{round(total_return_sum, 2)}
+            - Average Dividend Yield: {avg_dividend_yield}%
+            - Number of Assets: {num_assets}
+            - Best Performing Asset: {best_asset} (+€{best_return})
+            - Worst Performing Asset: {worst_asset} (€{worst_return})
+            """)
+
+        except Exception as e:
+            st.error(f"⚠️ Error in summary section: {e}")
+
