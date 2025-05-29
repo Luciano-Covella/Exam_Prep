@@ -188,7 +188,6 @@ if file_content and menu != "📁 Upload CSV":
             st.pyplot(fig2)
         else:
             st.info("No dividend data found for the tickers.")
-        else:
             st.info("No dividend data found for the tickers.")
 
     # ---------- Performance & Risk Analytics ----------
