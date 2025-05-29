@@ -209,23 +209,36 @@ if file_content and menu != "📁 Upload CSV":
             ax3.legend(fontsize=8, loc='best')
             st.pyplot(fig3)
 
-            # -------- Received Dividends in P&R tab --------
+                        # -------- Received Dividends in P&R tab --------
             st.subheader("Received Dividends")
+            # Calculate actual dividends received per year (dividend per share * shares)
             adj_dividends = {}
             for ticker, series in dividends_map.items():
                 shares = df.loc[df['Ticker'] == ticker, 'Shares'].iloc[0]
                 adj_dividends[ticker] = series * shares
             div_df = pd.DataFrame(adj_dividends).fillna(0).sort_index()
             if not div_df.empty:
-                fig4, ax4 = plt.subplots(figsize=(5,3))
+                # Create bar chart with legend on the right
+                fig4, ax4 = plt.subplots(figsize=(6, 3))
                 colors = plt.get_cmap('tab20').colors
-                div_df.plot(kind='bar', stacked=True, ax=ax4, color=colors[:len(div_df.columns)])
+                div_df.plot(
+                    kind='bar',
+                    stacked=True,
+                    ax=ax4,
+                    color=colors[:len(div_df.columns)]
+                )
                 ax4.set_xlabel('Year')
                 ax4.set_ylabel('Dividends (€)')
                 ax4.set_title('Annual Dividends Received')
-                legend = ax4.legend(fontsize=8, loc='upper center', bbox_to_anchor=(0.5, -0.6), ncol=3)
-                for text in legend.get_texts(): text.set_fontsize(8)
-                fig4.subplots_adjust(bottom=0.6)
+                # Place legend outside to the right
+                legend = ax4.legend(
+                    fontsize=8,
+                    loc='upper left',
+                    bbox_to_anchor=(1.02, 1),
+                    borderaxespad=0
+                )
+                # Adjust layout to accommodate legend
+                fig4.subplots_adjust(right=0.75)
                 st.pyplot(fig4)
             else:
                 st.info("No dividend data found for the tickers.")
