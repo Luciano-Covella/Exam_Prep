@@ -10,207 +10,181 @@ from io import StringIO  # Converts file content into readable text form
 
 # ---------- Helper functions (modular, bug-free) ----------
 
-def calculate_cagr(start_value: float, end_value: float, periods: float) -> float:
-    """Calculate annual growth rate from start to end value over given years."""
-    return (end_value / start_value) ** (1 / periods) - 1
+def calculate_cagr(start_value, end_value, periods):
+    # Calculates annual growth rate from start to end value over given years
+    return (end_value / start_value) ** (1 / periods) - 1  # ✅ Bug-free math
 
-
-def calculate_max_drawdown(series: pd.Series) -> float:
-    """Calculate worst drop from peak (risk metric)."""
-    cumulative = (1 + series).cumprod()
-    peak = cumulative.cummax()
-    drawdown = (cumulative - peak) / peak
-    return drawdown.min()
-
-
-def fetch_annual_dividends(ticker: str, start_date: datetime, end_date: datetime) -> pd.Series:
-    """Fetch and aggregate dividends per year for a given ticker between two dates."""
-    stock = yf.Ticker(ticker)
-    dividends = stock.dividends
-    if dividends.empty:
-        return pd.Series(dtype=float)
-    # Filter by date range avoiding timezone mismatches
-    mask = (dividends.index >= pd.to_datetime(start_date)) & (dividends.index <= pd.to_datetime(end_date))
-    filtered = dividends.loc[mask]
-    if filtered.empty:
-        return pd.Series(dtype=float)
-    return filtered.groupby(filtered.index.year).sum()
+def calculate_max_drawdown(series):
+    # Calculates worst drop from peak (risk metric)
+    cumulative = (1 + series).cumprod()  # Combine returns into a growth curve
+    peak = cumulative.cummax()  # Tracks the highest point so far
+    drawdown = (cumulative - peak) / peak  # How much below the peak it dropped
+    return drawdown.min()  # Returns the worst (lowest) drop ✅ Bug-free
 
 # ---------- Streamlit app setup ----------
 
-st.set_page_config(page_title="Portfolio Analyzer", layout="wide")
+st.set_page_config(page_title="Portfolio Analyzer", layout="wide")  # Set page title and full-width layout
 
 # ---------- Sidebar navigation menu ----------
-with st.sidebar:
-    st.title("📊 Portfolio Menu")
-    menu = st.radio(
-        "Navigation",
-        ["📁 Upload CSV", "📈 Portfolio Overview", "📉 Performance & Risk Analytics"]
-    )
-    if "last_updated" in st.session_state:
-        st.caption(f"Last updated: {st.session_state['last_updated']}")
-    if "portfolio_filename" in st.session_state:
-        st.caption(f"File: {st.session_state['portfolio_filename']}")
 
-# ---------- Initialize session state ----------
+with st.sidebar:
+    st.title("📊 Portfolio Menu")  # Sidebar title
+    menu = st.radio(  # Create radio buttons for page navigation
+        "Navigation",
+        ["📁 Upload CSV", "📈 Portfolio Overview", "📉 Performance & Risk Analytics"] ) 
+        
+    if "last_updated" in st.session_state:
+            st.caption(f"Last updated: {st.session_state['last_updated']}")
+    if "portfolio_filename" in st.session_state:
+            st.caption(f"File: {st.session_state['portfolio_filename']}")
+
+
+# ---------- Initialize session state (temporary memory) ----------
+
 if "portfolio_file" not in st.session_state:
-    st.session_state.portfolio_file = None
-    st.session_state.portfolio_filename = None
+    st.session_state.portfolio_file = None  # Stores uploaded file content
+    st.session_state.portfolio_filename = None  # Stores uploaded file name
 
 # ---------- File upload section ----------
-if menu == "📁 Upload CSV":
-    st.title("📁 Upload Portfolio CSV")
-    st.info("Upload a CSV with columns: Ticker, Shares, Buy Price, Buy Date")
-    uploaded = st.file_uploader("Upload CSV File", type=["csv"])
+
+if menu == "📁 Upload CSV":  # Show this section if "Upload CSV" is selected
+    st.title("📁 Upload Portfolio CSV")  # Page title
+    st.info("Upload a CSV with columns: Ticker, Shares, Buy Price, Buy Date")  # Instructions
+
+    uploaded = st.file_uploader("Upload CSV File", type=["csv"])  # File upload component
     if uploaded:
-        st.session_state.portfolio_file = uploaded.read()
-        st.session_state.portfolio_filename = uploaded.name
-        st.session_state.last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        st.success("✅ File uploaded successfully. Use the sidebar to continue.")
+        st.session_state.portfolio_file = uploaded.read()  # Read file content and store it
+        st.session_state.portfolio_filename = uploaded.name  # Store file name
+        st.success("✅ File uploaded successfully. Use the sidebar to continue.")  # Confirmation message
+        
+        from datetime import datetime 
+        st.session_state["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # ---------- Read and parse file content if available ----------
-file_content = st.session_state.get('portfolio_file')
-if file_content and menu != "📁 Upload CSV":
-    # Load DataFrame
+
+file_content = st.session_state.get("portfolio_file", None)  # Get file from session memory
+
+if file_content:
     try:
-        decoded = StringIO(file_content.decode('utf-8'))
-        df = pd.read_csv(decoded)
+        decoded = StringIO(file_content.decode("utf-8"))  # Decode bytes to text
+        df = pd.read_csv(decoded)  # Read CSV content into DataFrame ✅ Bug-free
         if df.empty:
-            st.error("❌ Uploaded file is empty.")
-            st.stop()
+            st.error("❌ The uploaded file is empty.")  # Show error if CSV is blank
+            st.stop()  # Stop app execution
     except Exception as e:
-        st.error(f"❌ Failed to read CSV: {e}")
-        st.stop()
+        st.error(f"❌ Failed to read CSV: {str(e)}")  # Show parsing errors
+        st.stop()  # Stop further processing
 
-    # Validate
-    req = ["Ticker", "Shares", "Buy Price", "Buy Date"]
-    if not all(c in df.columns for c in req):
-        st.error("❌ CSV must contain: Ticker, Shares, Buy Price, Buy Date")
-        st.stop()
+    # ---------- Validate required columns ----------
+    required_cols = ["Ticker", "Shares", "Buy Price", "Buy Date"]  # Must-have columns
+    if not all(col in df.columns for col in required_cols):  # Check all required columns exist
+        st.error("❌ CSV must contain: Ticker, Shares, Buy Price, Buy Date")  # Show error
+        st.stop()  # Stop if invalid structure
 
-    df["Buy Date"] = pd.to_datetime(df["Buy Date"])
-    today = datetime.today()
+    # ---------- Process and clean data ----------
+    df["Buy Date"] = pd.to_datetime(df["Buy Date"])  # Convert text to real date format
+    current_prices = []  # Stores current prices
+    historical_data = {}  # Stores price history per ticker
 
-    # Fetch data
-    names, prices, divs, hist = {}, [], {}, {}
-    for _, r in df.iterrows():
-        t, bd = r['Ticker'], r['Buy Date']
-        tk = yf.Ticker(t)
-        hist[t] = tk.history(start=bd, end=today)
-        names[t] = tk.info.get('shortName', t) if tk.info else t
-        divs[t] = fetch_annual_dividends(t, bd, today)
-        prices.append(hist[t]['Close'].iloc[-1] if not hist[t].empty else np.nan)
+    st.write("⏳ Fetching historical and current prices...")  # Status message
 
-    # Compute metrics
-    df['Current'] = prices
-    df['Value'] = df['Current'] * df['Shares']
-    df['Invested'] = df['Shares'] * df['Buy Price']
-    df['Abs Perf'] = df['Value'] - df['Invested']
-    df['Rel Perf'] = df['Abs Perf'] / df['Invested']
-    df['Name'] = df['Ticker'].map(names)
+    for _, row in df.iterrows():  # Loop through each investment row
+        ticker = row["Ticker"]  # Extract ticker symbol
+        buy_date = row["Buy Date"]  # Extract purchase date
+        today = datetime.today()  # Get today's date
 
-    total_val = df['Value'].sum()
-    total_pl = df['Abs Perf'].sum()
+        stock = yf.Ticker(ticker)  # Download data from Yahoo Finance
+        history = stock.history(start=buy_date, end=today)  # Fetch historical price data
+        historical_data[ticker] = history  # Store it for later analytics
+
+        try:
+            current_prices.append(history["Close"].iloc[-1])  # Add most recent closing price
+        except:
+            current_prices.append(None)  # If no data available, store None
+
+    # ---------- Add portfolio calculation columns ----------
+    df["Current Price"] = current_prices  # Current market value
+    df["Value"] = df["Current Price"] * df["Shares"]  # Total value per position
+    df["Profit/Loss"] = (df["Current Price"] - df["Buy Price"]) * df["Shares"]  # Gain or loss
+
+    total_value = df["Value"].sum()  # Sum of all position values
+    total_gain = df["Profit/Loss"].sum()  # Sum of all gains/losses
 
     # ---------- Portfolio Overview Section ----------
     if menu == "📈 Portfolio Overview":
-        st.title("📈 Portfolio Overview")
+        st.title("📈 Portfolio Overview")  # Page heading
+        st.dataframe(df)  # Show table with all positions
 
-        # Positions listing with sorting
-        st.subheader("Positions")
-        sort_by = st.selectbox("Sort by", ['Rel Perf', 'Abs Perf', 'Value'])
-        df_sorted = df.sort_values(by=sort_by, ascending=False)
-        for _, r in df_sorted.iterrows():
-            c1, c2 = st.columns([3, 1])
-            with c1:
-                st.markdown(
-                    f"**{r['Name']}**  \
-<small>{r['Ticker']}</small>",
-                    unsafe_allow_html=True
-                )
-            with c2:
-                st.metric("Size (€)", f"€{r['Value']:.2f}")
-                st.metric("Abs (€)", f"€{r['Abs Perf']:.2f}")
-                st.metric("Rel (%)", f"{r['Rel Perf']*100:.2f}%")
+        st.subheader("💰 Totals")  # Section title
+        st.write(f"**Total Portfolio Value:** €{round(total_value, 2)}")  # Total value
+        st.write(f"**Total Profit/Loss:** €{round(total_gain, 2)}")  # Total P/L
 
-        # Summary metrics
-        st.subheader("Overview")
-        col1, col2 = st.columns(2)
-        col1.metric("Total Portfolio Value", f"€{total_val:.2f}")
-        col2.metric("Total Profit/Loss", f"€{total_pl:.2f}")
+        st.subheader("📊 Allocation by Value")  # Section title
+        fig, ax = plt.subplots()  # Create chart
+        ax.pie(df["Value"], labels=df["Ticker"], autopct='%1.1f%%', startangle=140)  # Pie chart by value
+        ax.axis("equal")  # Equal aspect ratio to keep it round
+        st.pyplot(fig)  # Display chart in app
 
-        # Allocation pie chart
-        st.subheader("Allocation by Value")
-        fig1, ax1 = plt.subplots()
-        ax1.pie(df['Value'], labels=df['Ticker'], autopct='%1.1f%%', startangle=140)
-        ax1.axis('equal')
-        st.pyplot(fig1)
-
-        # Dividends received stacked bar
-        st.subheader("Received Dividends")
-        dv_df = pd.DataFrame(divs).fillna(0).sort_index()
-        if not dv_df.empty:
-            fig2, ax2 = plt.subplots()
-            dv_df.plot(kind='bar', stacked=True, ax=ax2)
-            ax2.set_xlabel('Year')
-            ax2.set_ylabel('Dividends (€)')
-            ax2.set_title('Annual Dividends Received')
-            st.pyplot(fig2)
-        else:
-            st.info("No dividends data available.")
-
-    # ---------- Risk & Performance Section ----------
+    # ---------- Risk and Performance Section ----------
     elif menu == "📉 Performance & Risk Analytics":
-        st.title("📉 Performance & Risk Analytics")
+        st.title("📉 Performance and Risk Analytics")  # Page heading
+
         st.markdown("""
         This section shows:
         - Per Asset: Volatility, Max Drawdown, Beta vs S&P500
         - Whole Portfolio: Sharpe Ratio, Sortino Ratio, Max Drawdown, CAGR
-        """
-        )
+        """)
 
-        returns_list = []
-        start = df['Buy Date'].min().date()
-        benchmark = yf.Ticker('^GSPC').history(start=start, end=today.date())['Close'].pct_change()
+        returns = []  # List to store each asset's returns
+        start_date = df["Buy Date"].min().date()  # Get earliest Buy Date
+        benchmark = yf.Ticker("^GSPC").history(start=start_date, end=datetime.today().date())["Close"].pct_change()  # S&P500 % changes
 
-        for ticker, history in hist.items():
-            history['Return'] = history['Close'].pct_change()
-            returns_list.append(history['Return'])
+        for ticker, history in historical_data.items():
+            history["Return"] = history["Close"].pct_change()  # Daily returns for the asset
+            returns.append(history["Return"])  # Add to list
 
-            vol = history['Return'].std() * np.sqrt(252)
-            max_dd = calculate_max_drawdown(history['Return'])
-            combined = pd.concat([history['Return'], benchmark], axis=1).dropna()
-            beta = linregress(combined.iloc[:,1], combined.iloc[:,0])[0] if not combined.empty else np.nan
+            volatility = history["Return"].std() * np.sqrt(252)  # Annualized volatility
+            max_dd = calculate_max_drawdown(history["Return"])  # Worst loss
+            aligned = pd.concat([history["Return"], benchmark], axis=1).dropna()  # Match with S&P500
 
-            with st.expander(f"📌 {ticker} Metrics"):
-                st.write("**Volatility (Annualized):**", round(vol,4))
-                st.write("**Max Drawdown:**", round(max_dd,4))
-                st.write("**Beta vs S&P500:**", round(beta,4))
+            if not aligned.empty:
+                slope, *_ = linregress(aligned.iloc[:, 1], aligned.iloc[:, 0])  # Beta value
+            else:
+                slope = np.nan  # No data for beta
 
-        if returns_list:
-            portfolio_returns = pd.concat(returns_list, axis=1).mean(axis=1)
-            sharpe = portfolio_returns.mean()/portfolio_returns.std()*np.sqrt(252)
-            downside = portfolio_returns[portfolio_returns<0].std()*np.sqrt(252)
-            sortino = portfolio_returns.mean()/downside if downside else np.nan
-            port_max_dd = calculate_max_drawdown(portfolio_returns)
+            with st.expander(f"📌 {ticker} Metrics"):  # Expandable view per asset
+                st.write("**Volatility (Annualized):**", round(volatility, 4))
+                st.write("**Max Drawdown:**", round(max_dd, 4))
+                st.write("**Beta vs S&P500:**", round(slope, 4))
 
-            days = (portfolio_returns.index[-1]-portfolio_returns.index[0]).days
-            years = days/365.25
-            cumulative = (1+portfolio_returns).prod()
-            cagr = calculate_cagr(1, cumulative, years)
+        # ---------- Portfolio-wide stats ----------
+        if returns:
+            combined_returns = pd.concat(returns, axis=1).mean(axis=1)  # Average daily return of all assets
 
-            st.subheader("Portfolio Summary")
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Sharpe Ratio", round(sharpe,3))
-            c2.metric("Sortino Ratio", round(sortino,3))
-            c3.metric("Max Drawdown", round(port_max_dd,3))
-            c4.metric("CAGR", f"{round(cagr*100,2)}%")
+            sharpe = combined_returns.mean() / combined_returns.std() * np.sqrt(252)  # Risk-adjusted return
+            downside = combined_returns[combined_returns < 0].std() * np.sqrt(252)  # Negative returns deviation
+            sortino = combined_returns.mean() / downside if downside else np.nan  # Sortino ratio
+            max_dd = calculate_max_drawdown(combined_returns)  # Portfolio max drawdown
 
-            st.subheader("Cumulative Return")
-            cum_series = (1+portfolio_returns).cumprod()
-            fig3, ax3 = plt.subplots()
-            ax3.plot(cum_series.index, cum_series.values)
-            ax3.set_title("Cumulative Portfolio Return")
-            ax3.set_xlabel("Date")
-            ax3.set_ylabel("Cumulative Return")
-            st.pyplot(fig3)
+            days = (combined_returns.index[-1] - combined_returns.index[0]).days  # Total number of days
+            years = days / 365.25  # Convert to years
+            cumulative_return = (1 + combined_returns).prod()  # Total return
+            cagr = calculate_cagr(1, cumulative_return, years)  # Compound annual growth rate
+
+            st.subheader("📦 Portfolio Summary")  # Metrics section
+            st.metric("Sharpe Ratio", round(sharpe, 3))  # Display Sharpe
+            st.metric("Sortino Ratio", round(sortino, 3))  # Display Sortino
+            st.metric("Max Drawdown", round(max_dd, 3))  # Display max drop
+            st.metric("CAGR", f"{round(cagr * 100, 2)}%")  # Display CAGR
+
+            st.subheader("📈 Cumulative Return")  # Performance graph
+            cumulative = (1 + combined_returns).cumprod()  # Build return curve
+            fig2, ax2 = plt.subplots()
+            ax2.plot(cumulative.index, cumulative.values)  # Draw curve
+            ax2.set_title("Cumulative Portfolio Return")  # Add title
+            ax2.set_xlabel("Date")  # X-axis
+            ax2.set_ylabel("Cumulative Return")  # Y-axis
+            st.pyplot(fig2)  # Show chart
+
+
+
