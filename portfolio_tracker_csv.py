@@ -146,12 +146,24 @@ if file_content and menu != "📁 Upload CSV":
         col1.metric("Total Portfolio Value", f"€{total_value:.2f}")
         col2.metric("Total Profit/Loss", f"€{total_pl:.2f}")
 
-        # Allocation pie chart
-        st.subheader("Allocation by Value")
-        fig1, ax1 = plt.subplots()
-        ax1.pie(df['Value'], labels=df['Ticker'], autopct='%1.1f%%', startangle=140)
-        ax1.axis('equal')
-        st.pyplot(fig1)
+                # Dividends stacked bar (smaller, professional palette)
+        st.subheader("Received Dividends")
+        div_df = pd.DataFrame(dividends_map).fillna(0).sort_index()
+        if not div_df.empty:
+            fig2, ax2 = plt.subplots(figsize=(6, 4))
+            colors = plt.get_cmap('tab20').colors
+            div_df.plot(
+                kind='bar',
+                stacked=True,
+                ax=ax2,
+                color=colors[:len(div_df.columns)]
+            )
+            ax2.set_xlabel('Year')
+            ax2.set_ylabel('Dividends (€)')
+            ax2.set_title('Annual Dividends Received')
+            ax2.legend(fontsize=8)
+            st.pyplot(fig2)
+        else:
 
         # Dividends stacked bar
         st.subheader("Received Dividends")
