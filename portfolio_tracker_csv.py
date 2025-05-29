@@ -13,11 +13,13 @@ from io import StringIO
 def calculate_cagr(start_value: float, end_value: float, periods: float) -> float:
     return (end_value / start_value) ** (1 / periods) - 1
 
+
 def calculate_max_drawdown(series: pd.Series) -> float:
     cumulative = (1 + series).cumprod()
     peak = cumulative.cummax()
     drawdown = (cumulative - peak) / peak
     return drawdown.min()
+
 
 def fetch_annual_dividends(ticker: str, start_date: datetime, end_date: datetime) -> pd.Series:
     stock = yf.Ticker(ticker)
@@ -31,6 +33,19 @@ def fetch_annual_dividends(ticker: str, start_date: datetime, end_date: datetime
     filtered.index = idx
     filtered = filtered.loc[mask]
     return filtered.groupby(filtered.index.year).sum() if not filtered.empty else pd.Series(dtype=float)
+
+
+def format_market_cap(value: float) -> str:
+    """Format market cap into human-readable string with k, Mio., Bn."""
+    if pd.isna(value):
+        return "N/A"
+    if value >= 1e9:
+        return f"€{value/1e9:.2f} Bn."
+    if value >= 1e6:
+        return f"€{value/1e6:.2f} Mio."
+    if value >= 1e3:
+        return f"€{value/1e3:.2f} k"
+    return f"€{value:.2f}"
 
 # App setup
 st.set_page_config(page_title="Portfolio Analyzer", layout="wide")
@@ -107,7 +122,7 @@ if file_content and menu != "📁 Upload CSV":
             'Market Cap':'Market Cap (€)'
         }, inplace=True)
         display['Relative Perf (%)'] *= 100
-        display['Market Cap (€)'] = display['Market Cap (€)'].apply(lambda x: f"€{x:,.0f}")
+        display['Market Cap (€)'] = display['Market Cap (€)'].apply(format_market_cap)
         st.dataframe(display.style.format({
             'Position Size (€)': '€{:.2f}',
             'Absolute Perf (€)': '€{:.2f}',
@@ -131,7 +146,7 @@ if file_content and menu != "📁 Upload CSV":
     elif menu == "📉 Performance & Risk Analytics":
         st.title("Performance & Risk Analytics")
 
-        # Per-asset expanders
+        # Per-asset expanders (removed Max Drawdown)
         returns_list = []
         start_date = df['Buy Date'].min().date()
         benchmark = yf.Ticker('^GSPC').history(start=start_date, end=today.date())['Close'].pct_change()
@@ -139,16 +154,15 @@ if file_content and menu != "📁 Upload CSV":
             r = hist['Close'].pct_change()
             returns_list.append(r)
             vol = r.std() * np.sqrt(252)
-            mdd = calculate_max_drawdown(r)
             paired = pd.concat([r, benchmark], axis=1).dropna()
             beta = linregress(paired.iloc[:,1], paired.iloc[:,0])[0] if not paired.empty else np.nan
             pe = df.loc[df['Ticker'] == t, 'P/E'].iloc[0]
             mcap = df.loc[df['Ticker'] == t, 'Market Cap'].iloc[0]
+            mcap_str = format_market_cap(mcap)
             with st.expander(f"{names[t]} ({t})"):
                 st.write(f"P/E Ratio: {pe:.2f}")
-                st.write(f"Market Cap: €{mcap:,.0f}")
+                st.write(f"Market Cap: {mcap_str}")
                 st.write(f"Volatility: {vol:.4f}")
-                st.write(f"Max Drawdown: {mdd:.4f}")
                 st.write(f"Beta: {beta:.4f}")
 
         # Portfolio-level metrics
