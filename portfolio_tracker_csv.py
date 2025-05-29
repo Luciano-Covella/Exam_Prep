@@ -151,32 +151,42 @@ if file_content and menu != "📁 Upload CSV":
                 st.write(f"Max Drawdown: {mdd:.4f}")
                 st.write(f"Beta: {beta:.4f}")
 
-        # Portfolio metrics
+                    # Portfolio metrics
         if returns_list:
-            prt=pd.concat(returns_list,axis=1).mean(axis=1)
-            sharpe=prt.mean()/prt.std()*np.sqrt(252)
-            downside=prt[prt<0].std()*np.sqrt(252)
-            sortino=prt.mean()/downside if downside else np.nan
-            mdd_p=calculate_max_drawdown(prt)
-            days=(prt.index[-1]-prt.index[0]).days
-            yrs=days/365.25
-            cum_ret=(1+prt).prod()
-            cagr=calculate_cagr(1,cum_ret,yrs)
-            tot_ret=(cum_ret-1)*100
-            vol_p=prt.std()*np.sqrt(252)
-            bp=pd.concat([prt,bench],axis=1).dropna()
-            beta_p=linregress(bp.iloc[:,1],bp.iloc[:,0])[0] if not bp.empty else np.nan
+            prt = pd.concat(returns_list, axis=1).mean(axis=1)
+            sharpe = prt.mean() / prt.std() * np.sqrt(252)
+            downside = prt[prt < 0].std() * np.sqrt(252)
+            sortino = prt.mean() / downside if downside else np.nan
+            mdd_p = calculate_max_drawdown(prt)
+            days = (prt.index[-1] - prt.index[0]).days
+            yrs = days / 365.25
+            cum_ret = (1 + prt).prod()
+            cagr = calculate_cagr(1, cum_ret, yrs)
+            tot_ret = (cum_ret - 1) * 100
+            vol_p = prt.std() * np.sqrt(252)
+            bp = pd.concat([prt, bench], axis=1).dropna()
+            beta_p = linregress(bp.iloc[:,1], bp.iloc[:,0])[0] if not bp.empty else np.nan
+            
+            # Income Yield: use latest year dividends
+            div_df_years = pd.DataFrame(dividends_map).fillna(0).sort_index()
+            latest_year = div_df_years.index.max()
+            total_income = div_df_years.loc[latest_year].sum() if latest_year is not None else 0
+            income_yield = (total_income / total_value) * 100 if total_value else 0
 
             st.subheader("Portfolio Summary")
-            r1c1,r1c2,r1c3,r1c4=st.columns(4)
-            r1c1.metric("Total Return (%)",f"{tot_ret:.2f}%")
-            r1c2.metric("CAGR (%)",f"{cagr*100:.2f}%")
-            r1c3.metric("Volatility",f"{vol_p:.2f}")
-            r1c4.metric("Beta",f"{beta_p:.2f}")
-            r2c1,r2c2,r2c3=st.columns(3)
-            r2c1.metric("Max Drawdown",f"{mdd_p:.2f}")
-            r2c2.metric("Sharpe",round(sharpe,3))
-            r2c3.metric("Sortino",round(sortino,3))
+            # Row 1: Total Return, CAGR, Volatility, Beta, Income Yield
+            r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(5)
+            r1c1.metric("Total Return (%)", f"{tot_ret:.2f}%")
+            r1c2.metric("CAGR (%)", f"{cagr*100:.2f}%")
+            r1c3.metric("Volatility", f"{vol_p:.2f}")
+            r1c4.metric("Beta", f"{beta_p:.2f}")
+            r1c5.metric("Income Yield (%)", f"{income_yield:.2f}%")
+
+            # Row 2: Max Drawdown, Sharpe, Sortino
+            r2c1, r2c2, r2c3 = st.columns(3)
+            r2c1.metric("Max Drawdown", f"{mdd_p:.2f}")
+            r2c2.metric("Sharpe", round(sharpe, 3))
+            r2c3.metric("Sortino", round(sortino, 3))
 
             st.subheader("Cumulative Return")
             cb=st.multiselect("Benchmarks",["S&P 500","Gold (GLD)","Bitcoin (BTC-USD)"])
