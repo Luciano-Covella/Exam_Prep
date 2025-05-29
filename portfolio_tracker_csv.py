@@ -113,21 +113,19 @@ if file_content and menu != "📁 Upload CSV":
         # Portfolio Overview
     if menu == "📈 Portfolio Overview":
         st.title("Portfolio Overview")
-        cols = ['Name','Ticker','Value','Abs Perf','Rel Perf','P/E','Market Cap']
+        # Only show core columns (remove P/E & Market Cap)
+        cols = ['Name','Ticker','Value','Abs Perf','Rel Perf']
         display = df[cols].copy()
         display.rename(columns={
             'Value':'Position Size (€)',
             'Abs Perf':'Absolute Perf (€)',
-            'Rel Perf':'Relative Perf (%)',
-            'Market Cap':'Market Cap (€)'
+            'Rel Perf':'Relative Perf (%)'
         }, inplace=True)
         display['Relative Perf (%)'] *= 100
-        display['Market Cap (€)'] = display['Market Cap (€)'].apply(format_market_cap)
         st.dataframe(display.style.format({
             'Position Size (€)': '€{:.2f}',
             'Absolute Perf (€)': '€{:.2f}',
-            'Relative Perf (%)': '{:.2f}%',
-            'P/E': '{:.2f}'
+            'Relative Perf (%)': '{:.2f}%'
         }), use_container_width=True)
 
         st.subheader("Summary")
@@ -139,16 +137,10 @@ if file_content and menu != "📁 Upload CSV":
         fig, ax = plt.subplots(figsize=(5, 3))
         colors = plt.get_cmap('tab20').colors
         n = len(df)
-        # Dynamic font size based on number of slices
         fontsize = max(6, 12 - n // 2)
         wedges, texts, autotexts = ax.pie(
-            df['Value'],
-            labels=df['Ticker'],
-            autopct='%1.1f%%',
-            startangle=140,
-            colors=colors
+            df['Value'], labels=df['Ticker'], autopct='%1.1f%%', startangle=140, colors=colors
         )
-        # Adjust label font sizes
         for txt in texts + autotexts:
             txt.set_fontsize(fontsize)
         ax.axis('equal')
