@@ -110,7 +110,7 @@ if file_content and menu != "📁 Upload CSV":
     total_value = df['Value'].sum()
     total_pl = df['Abs Perf'].sum()
 
-    # Portfolio Overview
+        # Portfolio Overview
     if menu == "📈 Portfolio Overview":
         st.title("Portfolio Overview")
         cols = ['Name','Ticker','Value','Abs Perf','Rel Perf','P/E','Market Cap']
@@ -135,7 +135,7 @@ if file_content and menu != "📁 Upload CSV":
         c1.metric("Total Value", f"€{total_value:.2f}")
         c2.metric("Total P/L", f"€{total_pl:.2f}")
 
-                st.subheader("Allocation by Value")
+        st.subheader("Allocation by Value")
         fig, ax = plt.subplots(figsize=(5, 3))
         colors = plt.get_cmap('tab20').colors
         n = len(df)
