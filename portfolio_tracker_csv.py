@@ -76,26 +76,17 @@ if menu == "📁 Upload CSV":
 # ---------- Process uploaded CSV for other pages ----------
 file_content = st.session_state.get('portfolio_file')
 if file_content and menu != "📁 Upload CSV":
-    # Read CSV
-    try:
-        decoded = StringIO(file_content.decode('utf-8'))
-        df = pd.read_csv(decoded)
-        if df.empty:
-            st.error("❌ Uploaded file is empty.")
-            st.stop()
-    except Exception as e:
-        st.error(f"❌ Failed to read CSV: {e}")
-        st.stop()
-    
+    # Read and parse CSV
+    decoded = StringIO(file_content.decode('utf-8'))
+    df = pd.read_csv(decoded)
+    df["Buy Date"] = pd.to_datetime(df["Buy Date"])
+    today = datetime.today()
+
     # Validate columns
     required = ["Ticker", "Shares", "Buy Price", "Buy Date"]
     if not all(col in df.columns for col in required):
         st.error("❌ CSV must contain: Ticker, Shares, Buy Price, Buy Date")
         st.stop()
-
-    # Parse dates
-    df["Buy Date"] = pd.to_datetime(df["Buy Date"])  
-    today = datetime.today()
 
     # Fetch market and dividend data
     names, prices, dividends_map, history_map = {}, [], {}, {}
@@ -104,7 +95,7 @@ if file_content and menu != "📁 Upload CSV":
         tk = yf.Ticker(ticker)
         history = tk.history(start=buy_date, end=today)
         history_map[ticker] = history
-        names[ticker] = tk.info.get('shortName', ticker) if tk.info else ticker
+        names[ticker] = tk.info.get('shortName', ticker)
         dividends_map[ticker] = fetch_annual_dividends(ticker, buy_date, today)
         prices.append(history['Close'].iloc[-1] if not history.empty else np.nan)
 
@@ -119,7 +110,7 @@ if file_content and menu != "📁 Upload CSV":
     total_value = df['Value'].sum()
     total_pl = df['Abs Perf'].sum()
 
-        # ---------- Portfolio Overview ----------
+    # ---------- Portfolio Overview ----------
     if menu == "📈 Portfolio Overview":
         st.title("📈 Portfolio Overview")
 
@@ -127,18 +118,19 @@ if file_content and menu != "📁 Upload CSV":
         st.subheader("Positions")
         display_df = df[['Name','Ticker','Value','Abs Perf','Rel Perf']].copy()
         display_df.rename(columns={
-            'Name':'Name',
-            'Ticker':'Ticker',
             'Value':'Position Size (€)',
             'Abs Perf':'Abs Performance (€)',
             'Rel Perf':'Rel Performance (%)'
         }, inplace=True)
         display_df['Rel Performance (%)'] = display_df['Rel Performance (%)'] * 100
-        st.dataframe(display_df.style.format({
-            'Position Size (€)': '€{:.2f}',
-            'Abs Performance (€)': '€{:.2f}',
-            'Rel Performance (%)': '{:.2f}%'
-        }), use_container_width=True)
+        st.dataframe(
+            display_df.style.format({
+                'Position Size (€)': '€{:.2f}',
+                'Abs Performance (€)': '€{:.2f}',
+                'Rel Performance (%)': '{:.2f}%'
+            }),
+            use_container_width=True
+        )
 
         # Summary metrics design
         st.subheader("Portfolio Summary")
@@ -146,7 +138,23 @@ if file_content and menu != "📁 Upload CSV":
         col1.metric("Total Portfolio Value", f"€{total_value:.2f}")
         col2.metric("Total Profit/Loss", f"€{total_pl:.2f}")
 
-                # Dividends stacked bar (smaller, professional palette)
+        # Allocation pie chart
+        st.subheader("Allocation by Value")
+        fig1, ax1 = plt.subplots(figsize=(6, 4))
+        colors = plt.get_cmap('tab20').colors
+        wedges, texts, autotexts = ax1.pie(
+            df['Value'],
+            labels=df['Ticker'],
+            autopct='%1.1f%%',
+            startangle=140,
+            colors=colors[:len(df)]
+        )
+        for t in texts + autotexts:
+            t.set_fontsize(8)
+        ax1.axis('equal')
+        st.pyplot(fig1)
+
+        # Dividends stacked bar
         st.subheader("Received Dividends")
         div_df = pd.DataFrame(dividends_map).fillna(0).sort_index()
         if not div_df.empty:
@@ -162,18 +170,6 @@ if file_content and menu != "📁 Upload CSV":
             ax2.set_ylabel('Dividends (€)')
             ax2.set_title('Annual Dividends Received')
             ax2.legend(fontsize=8)
-            st.pyplot(fig2)
-        else:
-
-        # Dividends stacked bar
-        st.subheader("Received Dividends")
-        div_df = pd.DataFrame(dividends_map).fillna(0).sort_index()
-        if not div_df.empty:
-            fig2, ax2 = plt.subplots()
-            div_df.plot(kind='bar', stacked=True, ax=ax2)
-            ax2.set_xlabel('Year')
-            ax2.set_ylabel('Dividends (€)')
-            ax2.set_title('Annual Dividends Received')
             st.pyplot(fig2)
         else:
             st.info("No dividend data found for the tickers.")
