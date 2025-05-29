@@ -226,10 +226,16 @@ if file_content and menu != "📁 Upload CSV":
 
             st.subheader("Cumulative Return")
             # Option to include external benchmarks
-            benchmarks = st.multiselect(
+            default_benchmarks = ["S&P 500", "Gold (GLD)", "Bitcoin (BTC-USD)"]
+            selected = st.multiselect(
                 "Include Benchmarks:",
-                ["S&P 500", "Gold (GLD)", "Bitcoin (BTC-USD)"]
+                default_benchmarks
             )
+            custom = st.text_input(
+                "Add custom benchmark ticker (comma-separated):",
+                ""
+            )
+            custom_list = [t.strip() for t in custom.split(',') if t.strip()]
 
             # Portfolio cumulative
             cum_port = (1 + port_returns).cumprod()
@@ -237,20 +243,29 @@ if file_content and menu != "📁 Upload CSV":
             fig3, ax3 = plt.subplots(figsize=(6, 4))
             ax3.plot(cum_port.index, cum_port.values, label="Portfolio", linewidth=2)
 
-            # Add selected benchmarks
-            if "S&P 500" in benchmarks:
+            # Add selected default benchmarks
+            if "S&P 500" in selected:
                 cum_sp = (1 + benchmark).cumprod()
                 ax3.plot(cum_sp.index, cum_sp.values, linestyle='--', label="S&P 500")
-            if "Gold (GLD)" in benchmarks:
+            if "Gold (GLD)" in selected:
                 gold_ret = yf.Ticker("GLD").history(start=start_date, end=today)['Close'].pct_change()
                 cum_gold = (1 + gold_ret).cumprod()
                 ax3.plot(cum_gold.index, cum_gold.values, linestyle='--', label="Gold (GLD)")
-            if "Bitcoin (BTC-USD)" in benchmarks:
+            if "Bitcoin (BTC-USD)" in selected:
                 btc_ret = yf.Ticker("BTC-USD").history(start=start_date, end=today)['Close'].pct_change()
                 cum_btc = (1 + btc_ret).cumprod()
                 ax3.plot(cum_btc.index, cum_btc.values, linestyle='--', label="Bitcoin (BTC-USD)")
 
+            # Add custom benchmarks
+            for ticker in custom_list:
+                try:
+                    ret = yf.Ticker(ticker).history(start=start_date, end=today)['Close'].pct_change()
+                    cum_ret_custom = (1 + ret).cumprod()
+                    ax3.plot(cum_ret_custom.index, cum_ret_custom.values, linestyle='--', label=ticker)
+                except Exception:
+                    st.warning(f"Failed to fetch data for {ticker}")
+
             ax3.set_xlabel('Date')
             ax3.set_ylabel('Cumulative Return')
-            ax3.legend(fontsize=8)
+            ax3.legend(fontsize=8, loc='best')
             st.pyplot(fig3)
