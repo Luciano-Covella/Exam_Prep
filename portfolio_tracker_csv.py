@@ -42,6 +42,50 @@ def fetch_annual_dividends(ticker: str, start_date: datetime, end_date: datetime
 
 # ---------- Streamlit app setup ----------
 st.set_page_config(page_title="Portfolio Analyzer", layout="wide")
+st.markdown("""
+<style>
+/* Global background and font */
+body {
+    background-color: #f2f2f2; /* soft light gray */
+    color: #1a1a1a;            /* very dark gray text */
+    font-family: 'Helvetica Neue', sans-serif;
+}
+
+/* Title */
+h1 {
+    color: #1a1a1a;
+    font-size: 42px;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+/* Section headers */
+h2 {
+    color: #2b2b2b;
+    font-size: 30px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 0.5rem;
+    margin-top: 2rem;
+}
+
+/* Sidebar */
+.css-1d391kg {
+    background-color: #e9ecef !important;
+}
+
+/* Sidebar text */
+.css-10mb3ef, .css-qri22k {
+    color: #1a1a1a !important;
+}
+
+/* File uploader box */
+.css-1u3d2nq {
+    border: 2px dashed #2e86de;
+    background-color: #ffffff;
+    color: #1a1a1a;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ---------- Sidebar navigation menu ----------
 with st.sidebar:
