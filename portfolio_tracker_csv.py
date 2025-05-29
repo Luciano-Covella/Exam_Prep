@@ -124,7 +124,7 @@ if file_content and menu != "📁 Upload CSV":
         for _, r in df_sorted.iterrows():
             col_name, col_metrics = st.columns([3,1])
             with col_name:
-                st.markdown(f"**{r['Name']}**  \
+                st.markdown(f"**{r['Name']}**  \n<small>{r['Ticker']}</small>", unsafe_allow_html=True)
 <small>{r['Ticker']}</small>", unsafe_allow_html=True)
             with col_metrics:
                 st.metric("Size (€)", f"€{r['Value']:.2f}")
