@@ -225,10 +225,33 @@ if file_content and menu != "📁 Upload CSV":
             p3.metric("Max Drawdown", round(port_mdd,3))
             p4.metric("CAGR", f"{cagr*100:.2f}%")
 
-            st.subheader("Cumulative Return")
-            cum = (1+port_returns).cumprod()
-            fig3, ax3 = plt.subplots()
-            ax3.plot(cum.index, cum.values)
+                        st.subheader("Cumulative Return")
+            # Option to include external benchmarks
+            benchmarks = st.multiselect(
+                "Include Benchmarks:",
+                ["S&P 500", "Gold (GLD)", "Bitcoin (BTC-USD)"]
+            )
+
+            # Portfolio cumulative
+            cum_port = (1 + port_returns).cumprod()
+
+            fig3, ax3 = plt.subplots(figsize=(6, 4))
+            ax3.plot(cum_port.index, cum_port.values, label="Portfolio", linewidth=2)
+
+            # Add selected benchmarks
+            if "S&P 500" in benchmarks:
+                cum_sp = (1 + benchmark).cumprod()
+                ax3.plot(cum_sp.index, cum_sp.values, linestyle='--', label="S&P 500")
+            if "Gold (GLD)" in benchmarks:
+                gold_ret = yf.Ticker("GLD").history(start=start_date, end=today)['Close'].pct_change()
+                cum_gold = (1 + gold_ret).cumprod()
+                ax3.plot(cum_gold.index, cum_gold.values, linestyle='--', label="Gold (GLD)")
+            if "Bitcoin (BTC-USD)" in benchmarks:
+                btc_ret = yf.Ticker("BTC-USD").history(start=start_date, end=today)['Close'].pct_change()
+                cum_btc = (1 + btc_ret).cumprod()
+                ax3.plot(cum_btc.index, cum_btc.values, linestyle='--', label="Bitcoin (BTC-USD)")
+
             ax3.set_xlabel('Date')
             ax3.set_ylabel('Cumulative Return')
+            ax3.legend(fontsize=8)
             st.pyplot(fig3)
