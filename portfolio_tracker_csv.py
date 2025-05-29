@@ -8,7 +8,7 @@ from datetime import datetime  # Used to work with dates (like Buy Date)
 from scipy.stats import linregress  # Calculates regression (for Beta)
 from io import StringIO  # Converts file content into readable text form
 
-# ---------- Helper functions (modular, bug-free) ----------
+# ---------- Helper functions (modular, robust) ----------
 
 def calculate_cagr(start_value: float, end_value: float, periods: float) -> float:
     """Calculate annual growth rate from start to end value over given years."""
@@ -24,14 +24,20 @@ def calculate_max_drawdown(series: pd.Series) -> float:
 
 
 def fetch_annual_dividends(ticker: str, start_date: datetime, end_date: datetime) -> pd.Series:
-    """Fetch and aggregate dividends per year for a given ticker between two dates."""
+    """Fetch and aggregate dividends per year for a given ticker between two dates, handling timezones."""
     stock = yf.Ticker(ticker)
     dividends = stock.dividends
     if dividends.empty:
         return pd.Series(dtype=float)
-    # Filter by date range avoiding timezone mismatches
-    mask = (dividends.index >= pd.to_datetime(start_date)) & (dividends.index <= pd.to_datetime(end_date))
-    filtered = dividends.loc[mask]
+    # Normalize index to naive timestamps
+    idx = dividends.index
+    if idx.tz is not None:
+        idx = idx.tz_localize(None)
+    # Create mask with naive datetimes
+    mask = (idx >= pd.to_datetime(start_date)) & (idx <= pd.to_datetime(end_date))
+    filtered = dividends.copy()
+    filtered.index = idx
+    filtered = filtered.loc[mask]
     if filtered.empty:
         return pd.Series(dtype=float)
     return filtered.groupby(filtered.index.year).sum()
