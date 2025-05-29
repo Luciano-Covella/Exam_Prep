@@ -42,6 +42,7 @@ def fetch_annual_dividends(ticker: str, start_date: datetime, end_date: datetime
     return filtered.groupby(filtered.index.year).sum()
 
 # ---------- Streamlit app setup ----------
+
 st.set_page_config(page_title="Portfolio Analyzer", layout="wide")
 
 # ---------- Sidebar navigation menu ----------
@@ -153,7 +154,7 @@ if file_content and menu != "📁 Upload CSV":
         ax1.axis('equal')
         st.pyplot(fig1)
 
-                # Dividends stacked bar
+        # ---------- Dividends stacked bar ----------
         st.subheader("Received Dividends")
         # Calculate actual dividends received per year (dividend per share * shares)
         adj_dividends = {}
@@ -179,8 +180,6 @@ if file_content and menu != "📁 Upload CSV":
                 text.set_fontsize(8)
             fig2.tight_layout()
             st.pyplot(fig2)
-        else:
-            st.info("No dividend data found for the tickers.")
         else:
             st.info("No dividend data found for the tickers.")
 
@@ -236,16 +235,10 @@ if file_content and menu != "📁 Upload CSV":
             p4.metric("CAGR", f"{cagr*100:.2f}%")
 
             st.subheader("Cumulative Return")
-            # Option to include external benchmarks
+            # Option to include external benchmarks and custom tickers
             default_benchmarks = ["S&P 500", "Gold (GLD)", "Bitcoin (BTC-USD)"]
-            selected = st.multiselect(
-                "Include Benchmarks:",
-                default_benchmarks
-            )
-            custom = st.text_input(
-                "Add custom benchmark ticker (comma-separated):",
-                ""
-            )
+            selected = st.multiselect("Include Benchmarks:", default_benchmarks)
+            custom = st.text_input("Add custom benchmark ticker (comma-separated):", "")
             custom_list = [t.strip() for t in custom.split(',') if t.strip()]
 
             # Portfolio cumulative
