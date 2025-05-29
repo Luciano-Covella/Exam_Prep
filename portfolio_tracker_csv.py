@@ -119,28 +119,32 @@ if file_content and menu != "📁 Upload CSV":
     total_value = df['Value'].sum()
     total_pl = df['Abs Perf'].sum()
 
-    # ---------- Portfolio Overview ----------
+        # ---------- Portfolio Overview ----------
     if menu == "📈 Portfolio Overview":
         st.title("📈 Portfolio Overview")
 
-        # Sortable positions list
+        # Sortable positions table
         st.subheader("Positions")
-        sort_option = st.selectbox("Sort by", ["Rel Perf", "Abs Perf", "Value"])
-        df_sorted = df.sort_values(by=sort_option, ascending=False)
-        for _, r in df_sorted.iterrows():
-            col_name, col_metrics = st.columns([3,1])
-            with col_name:
-                st.markdown(f"**{r['Name']}**  \n<small>{r['Ticker']}</small>", unsafe_allow_html=True)
-            with col_metrics:
-                st.metric("Size (€)", f"€{r['Value']:.2f}")
-                st.metric("Abs (€)", f"€{r['Abs Perf']:.2f}")
-                st.metric("Rel (%)", f"{r['Rel Perf']*100:.2f}%")
+        display_df = df[['Name','Ticker','Value','Abs Perf','Rel Perf']].copy()
+        display_df.rename(columns={
+            'Name':'Name',
+            'Ticker':'Ticker',
+            'Value':'Position Size (€)',
+            'Abs Perf':'Abs Performance (€)',
+            'Rel Perf':'Rel Performance (%)'
+        }, inplace=True)
+        display_df['Rel Performance (%)'] = display_df['Rel Performance (%)'] * 100
+        st.dataframe(display_df.style.format({
+            'Position Size (€)': '€{:.2f}',
+            'Abs Performance (€)': '€{:.2f}',
+            'Rel Performance (%)': '{:.2f}%'
+        }), use_container_width=True)
 
         # Summary metrics design
         st.subheader("Portfolio Summary")
-        m1, m2 = st.columns(2)
-        m1.metric("Total Portfolio Value", f"€{total_value:.2f}")
-        m2.metric("Total Profit/Loss", f"€{total_pl:.2f}")
+        col1, col2 = st.columns(2)
+        col1.metric("Total Portfolio Value", f"€{total_value:.2f}")
+        col2.metric("Total Profit/Loss", f"€{total_pl:.2f}")
 
         # Allocation pie chart
         st.subheader("Allocation by Value")
