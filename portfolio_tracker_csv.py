@@ -94,6 +94,7 @@ if file_content and menu != "📁 Upload CSV":
         divs[t] = fetch_annual_dividends(t, bd, today)
         prices.append(hist[t]['Close'].iloc[-1] if not hist[t].empty else np.nan)
 
+    # Compute metrics
     df['Current'] = prices
     df['Value'] = df['Current'] * df['Shares']
     df['Invested'] = df['Shares'] * df['Buy Price']
@@ -104,17 +105,22 @@ if file_content and menu != "📁 Upload CSV":
     total_val = df['Value'].sum()
     total_pl = df['Abs Perf'].sum()
 
+    # ---------- Portfolio Overview Section ----------
     if menu == "📈 Portfolio Overview":
         st.title("📈 Portfolio Overview")
-        # Positions listing
+
+        # Positions listing with sorting
         st.subheader("Positions")
         sort_by = st.selectbox("Sort by", ['Rel Perf', 'Abs Perf', 'Value'])
-        df = df.sort_values(by=sort_by, ascending=False)
-        for _, r in df.iterrows():
-            c1, c2 = st.columns([3,1])
+        df_sorted = df.sort_values(by=sort_by, ascending=False)
+        for _, r in df_sorted.iterrows():
+            c1, c2 = st.columns([3, 1])
             with c1:
-                st.markdown(f"**{r['Name']}**  
-<small>{r['Ticker']}</small>", unsafe_allow_html=True)
+                st.markdown(
+                    f"**{r['Name']}**  \
+<small>{r['Ticker']}</small>",
+                    unsafe_allow_html=True
+                )
             with c2:
                 st.metric("Size (€)", f"€{r['Value']:.2f}")
                 st.metric("Abs (€)", f"€{r['Abs Perf']:.2f}")
@@ -122,30 +128,82 @@ if file_content and menu != "📁 Upload CSV":
 
         # Summary metrics
         st.subheader("Overview")
-        a, b = st.columns(2)
-        a.metric("Total Value", f"€{total_val:.2f}")
-        b.metric("Total P/L", f"€{total_pl:.2f}")
+        col1, col2 = st.columns(2)
+        col1.metric("Total Portfolio Value", f"€{total_val:.2f}")
+        col2.metric("Total Profit/Loss", f"€{total_pl:.2f}")
 
-        # Pie chart
-        st.subheader("Allocation")
-        fig, ax = plt.subplots()
-        ax.pie(df['Value'], labels=df['Ticker'], autopct='%1.1f%%', startangle=140)
-        ax.axis('equal')
-        st.pyplot(fig)
+        # Allocation pie chart
+        st.subheader("Allocation by Value")
+        fig1, ax1 = plt.subplots()
+        ax1.pie(df['Value'], labels=df['Ticker'], autopct='%1.1f%%', startangle=140)
+        ax1.axis('equal')
+        st.pyplot(fig1)
 
-        # Dividends
-        st.subheader("Dividends Received")
-        dv = pd.DataFrame(divs).fillna(0).sort_index()
-        if not dv.empty:
+        # Dividends received stacked bar
+        st.subheader("Received Dividends")
+        dv_df = pd.DataFrame(divs).fillna(0).sort_index()
+        if not dv_df.empty:
             fig2, ax2 = plt.subplots()
-            dv.plot(kind='bar', stacked=True, ax=ax2)
+            dv_df.plot(kind='bar', stacked=True, ax=ax2)
             ax2.set_xlabel('Year')
-            ax2.set_ylabel('€ Dividends')
-            ax2.set_title('Annual Dividends')
+            ax2.set_ylabel('Dividends (€)')
+            ax2.set_title('Annual Dividends Received')
             st.pyplot(fig2)
         else:
-            st.info("No dividends data.")
+            st.info("No dividends data available.")
 
+    # ---------- Risk & Performance Section ----------
     elif menu == "📉 Performance & Risk Analytics":
         st.title("📉 Performance & Risk Analytics")
-        # unchanged
+        st.markdown("""
+        This section shows:
+        - Per Asset: Volatility, Max Drawdown, Beta vs S&P500
+        - Whole Portfolio: Sharpe Ratio, Sortino Ratio, Max Drawdown, CAGR
+        """
+        )
+
+        returns_list = []
+        start = df['Buy Date'].min().date()
+        benchmark = yf.Ticker('^GSPC').history(start=start, end=today.date())['Close'].pct_change()
+
+        for ticker, history in hist.items():
+            history['Return'] = history['Close'].pct_change()
+            returns_list.append(history['Return'])
+
+            vol = history['Return'].std() * np.sqrt(252)
+            max_dd = calculate_max_drawdown(history['Return'])
+            combined = pd.concat([history['Return'], benchmark], axis=1).dropna()
+            beta = linregress(combined.iloc[:,1], combined.iloc[:,0])[0] if not combined.empty else np.nan
+
+            with st.expander(f"📌 {ticker} Metrics"):
+                st.write("**Volatility (Annualized):**", round(vol,4))
+                st.write("**Max Drawdown:**", round(max_dd,4))
+                st.write("**Beta vs S&P500:**", round(beta,4))
+
+        if returns_list:
+            portfolio_returns = pd.concat(returns_list, axis=1).mean(axis=1)
+            sharpe = portfolio_returns.mean()/portfolio_returns.std()*np.sqrt(252)
+            downside = portfolio_returns[portfolio_returns<0].std()*np.sqrt(252)
+            sortino = portfolio_returns.mean()/downside if downside else np.nan
+            port_max_dd = calculate_max_drawdown(portfolio_returns)
+
+            days = (portfolio_returns.index[-1]-portfolio_returns.index[0]).days
+            years = days/365.25
+            cumulative = (1+portfolio_returns).prod()
+            cagr = calculate_cagr(1, cumulative, years)
+
+            st.subheader("Portfolio Summary")
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Sharpe Ratio", round(sharpe,3))
+            c2.metric("Sortino Ratio", round(sortino,3))
+            c3.metric("Max Drawdown", round(port_max_dd,3))
+            c4.metric("CAGR", f"{round(cagr*100,2)}%")
+
+            st.subheader("Cumulative Return")
+            cum_series = (1+portfolio_returns).cumprod()
+            fig3, ax3 = plt.subplots()
+            ax3.plot(cum_series.index, cum_series.values)
+            ax3.set_title("Cumulative Portfolio Return")
+            ax3.set_xlabel("Date")
+            ax3.set_ylabel("Cumulative Return")
+            st.pyplot(fig3)
