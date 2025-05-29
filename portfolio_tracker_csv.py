@@ -155,7 +155,12 @@ if file_content and menu != "📁 Upload CSV":
 
         # Dividends stacked bar
         st.subheader("Received Dividends")
-        div_df = pd.DataFrame(dividends_map).fillna(0).sort_index()
+        # Calculate actual dividends received per year (dividend per share * shares)
+        adj_dividends = {}
+        for ticker, series in dividends_map.items():
+            shares = df.loc[df['Ticker'] == ticker, 'Shares'].iloc[0]
+            adj_dividends[ticker] = series * shares
+        div_df = pd.DataFrame(adj_dividends).fillna(0).sort_index()
         if not div_df.empty:
             fig2, ax2 = plt.subplots(figsize=(5, 3))
             colors = plt.get_cmap('tab20').colors
