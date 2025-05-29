@@ -175,7 +175,9 @@ if file_content and menu != "📁 Upload CSV":
             ax2.set_ylabel('Dividends (€)')
             ax2.set_title('Annual Dividends Received')
             # Place legend below chart
-            legend = ax2.legend(fontsize=8, loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3)
+            legend = ax2.legend(fontsize=8, loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=3)
+            # Adjust bottom margin to accommodate legend
+            fig2.subplots_adjust(bottom=0.3)
             for text in legend.get_texts():
                 text.set_fontsize(8)
             fig2.tight_layout()
