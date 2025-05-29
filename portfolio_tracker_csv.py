@@ -153,7 +153,7 @@ if file_content and menu != "📁 Upload CSV":
         ax1.axis('equal')
         st.pyplot(fig1)
 
-        # Dividends stacked bar
+                # Dividends stacked bar
         st.subheader("Received Dividends")
         # Calculate actual dividends received per year (dividend per share * shares)
         adj_dividends = {}
@@ -173,8 +173,14 @@ if file_content and menu != "📁 Upload CSV":
             ax2.set_xlabel('Year')
             ax2.set_ylabel('Dividends (€)')
             ax2.set_title('Annual Dividends Received')
-            ax2.legend(fontsize=8)
+            # Place legend below chart
+            legend = ax2.legend(fontsize=8, loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3)
+            for text in legend.get_texts():
+                text.set_fontsize(8)
+            fig2.tight_layout()
             st.pyplot(fig2)
+        else:
+            st.info("No dividend data found for the tickers.")
         else:
             st.info("No dividend data found for the tickers.")
 
