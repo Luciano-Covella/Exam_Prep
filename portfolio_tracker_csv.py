@@ -195,67 +195,11 @@ if file_content and menu != "📁 Upload CSV":
             bp = pd.concat([prt, benchmark], axis=1).dropna()
             beta_p = linregress(bp.iloc[:,1], bp.iloc[:,0])[0] if not bp.empty else np.nan
 
-            # Income Yield
-            div_df_years = pd.DataFrame(dividends_map).fillna(0).sort_index()
-            latest_year = div_df_years.index.max()
-            total_income = div_df_years.loc[latest_year].sum() if latest_year is not None else 0
+                        # Income Yield: use previous full calendar year dividends
+            prev_year = today.year - 1
+            total_income = 0
+            for ticker, series in dividends_map.items():
+                shares = df.loc[df['Ticker'] == ticker, 'Shares'].iloc[0]
+                year_div = series.get(prev_year, 0)
+                total_income += year_div * shares
             income_yield = (total_income / total_value) * 100 if total_value else 0
-
-            st.subheader("Portfolio Summary")
-            # Two rows of four metrics each
-            row1 = st.columns(4)
-            row1[0].metric("Total Return (%)", f"{tot_ret:.2f}%")
-            row1[1].metric("CAGR (%)", f"{cagr*100:.2f}%")
-            row1[2].metric("Volatility", f"{vol_p:.2f}")
-            row1[3].metric("Beta", f"{beta_p:.2f}")
-
-            row2 = st.columns(4)
-            row2[0].metric("Income Yield (%)", f"{income_yield:.2f}%")
-            row2[1].metric("Max Drawdown", f"{mdd_p:.2f}")
-            row2[2].metric("Sharpe Ratio", round(sharpe, 3))
-            row2[3].metric("Sortino Ratio", round(sortino, 3))
-
-            # Cumulative Return chart
-            st.subheader("Cumulative Return")
-            cb = st.multiselect("Benchmarks", ["S&P 500","Gold (GLD)","Bitcoin (BTC-USD)"])
-            custom = st.text_input("Custom tickers (comma-separated)", "")
-            cl = [x.strip() for x in custom.split(',') if x.strip()]
-            fig3, ax3 = plt.subplots(figsize=(5,3))
-            ax3.plot((1 + prt).cumprod(), label="Portfolio", linewidth=2)
-            if "S&P 500" in cb:
-                sp = (1 + benchmark).cumprod()
-                ax3.plot(sp, linestyle='--', label="S&P 500")
-            if "Gold (GLD)" in cb:
-                g = yf.Ticker("GLD").history(start=start_date, end=today)['Close'].pct_change()
-                ax3.plot((1 + g).cumprod(), linestyle='--', label="Gold (GLD)")
-            if "Bitcoin (BTC-USD)" in cb:
-                b = yf.Ticker("BTC-USD").history(start=start_date, end=today)['Close'].pct_change()
-                ax3.plot((1 + b).cumprod(), linestyle='--', label="Bitcoin (BTC-USD)")
-            for x in cl:
-                try:
-                    temp = yf.Ticker(x).history(start=start_date, end=today)['Close'].pct_change()
-                    ax3.plot((1 + temp).cumprod(), linestyle='--', label=x)
-                except Exception:
-                    st.warning(f"Failed to fetch data for {x}")
-            ax3.set_xlabel('Date')
-            ax3.set_ylabel('Cumulative Return')
-            ax3.legend(fontsize=8)
-            st.pyplot(fig3)
-
-            # Dividends in P&R
-            st.subheader("Received Dividends")
-            adj = {}
-            for t, s in dividends_map.items():
-                adj[t] = s * df.loc[df['Ticker']==t, 'Shares'].iloc[0]
-            ddf = pd.DataFrame(adj).fillna(0).sort_index()
-            if not ddf.empty:
-                fig4, ax4 = plt.subplots(figsize=(5,3))
-                ddf.plot(kind='bar', stacked=True, ax=ax4, color=plt.get_cmap('tab20').colors)
-                ax4.set_xlabel('Year')
-                ax4.set_ylabel('Dividends (€)')
-                ax4.set_title('Annual Dividends Received')
-                lg = ax4.legend(fontsize=8, loc='upper left', bbox_to_anchor=(1.02, 1))
-                fig4.subplots_adjust(right=0.8)
-                st.pyplot(fig4)
-            else:
-                st.info("No dividends.")
