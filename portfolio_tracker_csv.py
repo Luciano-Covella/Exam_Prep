@@ -135,10 +135,22 @@ if file_content and menu != "📁 Upload CSV":
         c1.metric("Total Value", f"€{total_value:.2f}")
         c2.metric("Total P/L", f"€{total_pl:.2f}")
 
-        st.subheader("Allocation by Value")
-        fig, ax = plt.subplots(figsize=(5,3))
+                st.subheader("Allocation by Value")
+        fig, ax = plt.subplots(figsize=(5, 3))
         colors = plt.get_cmap('tab20').colors
-        ax.pie(df['Value'], labels=df['Ticker'], autopct='%1.1f%%', startangle=140, colors=colors)
+        n = len(df)
+        # Dynamic font size based on number of slices
+        fontsize = max(6, 12 - n // 2)
+        wedges, texts, autotexts = ax.pie(
+            df['Value'],
+            labels=df['Ticker'],
+            autopct='%1.1f%%',
+            startangle=140,
+            colors=colors
+        )
+        # Adjust label font sizes
+        for txt in texts + autotexts:
+            txt.set_fontsize(fontsize)
         ax.axis('equal')
         st.pyplot(fig)
 
