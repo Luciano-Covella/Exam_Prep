@@ -26,8 +26,15 @@ def calculate_max_drawdown(series: pd.Series) -> float:
 def fetch_annual_dividends(ticker: str, start_date: datetime, end_date: datetime) -> pd.Series:
     """Fetch and aggregate dividends per year for a given ticker between two dates."""
     stock = yf.Ticker(ticker)
-    dividends = stock.dividends.loc[start_date:end_date]
-    return dividends.groupby(dividends.index.year).sum() if not dividends.empty else pd.Series(dtype=float)
+    dividends = stock.dividends
+    if dividends.empty:
+        return pd.Series(dtype=float)
+    # Filter by date range avoiding timezone mismatches
+    mask = (dividends.index >= pd.to_datetime(start_date)) & (dividends.index <= pd.to_datetime(end_date))
+    filtered = dividends.loc[mask]
+    if filtered.empty:
+        return pd.Series(dtype=float)
+    return filtered.groupby(filtered.index.year).sum()
 
 # ---------- Streamlit app setup ----------
 
