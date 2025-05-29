@@ -1,254 +1,223 @@
 # Import the necessary libraries (like toolkits for specific tasks)
-import streamlit as st  # Streamlit is used to build the interactive web app
-import pandas as pd  # Pandas helps load and work with spreadsheet-like data
-import yfinance as yf  # yfinance allows downloading stock and crypto prices
-import matplotlib.pyplot as plt  # Matplotlib helps create visual charts
-import numpy as np  # Numpy handles numerical operations like calculations
-from datetime import datetime  # Used to work with dates (like Buy Date)
-from scipy.stats import linregress  # Calculates regression (for Beta)
-from io import StringIO  # Converts file content into readable text form
+import streamlit as st
+import pandas as pd
+import yfinance as yf
+import matplotlib.pyplot as plt
+import numpy as np
+from datetime import datetime
+from scipy.stats import linregress
+from io import StringIO
 
-# ---------- Helper functions (modular, robust) ----------
+# Helper functions
 
 def calculate_cagr(start_value: float, end_value: float, periods: float) -> float:
-    """Calculate annual growth rate from start to end value over given years."""
     return (end_value / start_value) ** (1 / periods) - 1
 
-
 def calculate_max_drawdown(series: pd.Series) -> float:
-    """Calculate worst drop from peak (risk metric)."""
     cumulative = (1 + series).cumprod()
     peak = cumulative.cummax()
     drawdown = (cumulative - peak) / peak
     return drawdown.min()
 
-
 def fetch_annual_dividends(ticker: str, start_date: datetime, end_date: datetime) -> pd.Series:
-    """Fetch and aggregate dividends per year for a given ticker between two dates, handling timezones."""
     stock = yf.Ticker(ticker)
     dividends = stock.dividends
     if dividends.empty:
         return pd.Series(dtype=float)
     idx = dividends.index
-    if idx.tz is not None:
-        idx = idx.tz_localize(None)
+    idx = idx.tz_localize(None) if idx.tz is not None else idx
     mask = (idx >= pd.to_datetime(start_date)) & (idx <= pd.to_datetime(end_date))
     filtered = dividends.copy()
     filtered.index = idx
     filtered = filtered.loc[mask]
-    if filtered.empty:
-        return pd.Series(dtype=float)
-    return filtered.groupby(filtered.index.year).sum()
+    return filtered.groupby(filtered.index.year).sum() if not filtered.empty else pd.Series(dtype=float)
 
-# ---------- Streamlit app setup ----------
-
+# App setup
 st.set_page_config(page_title="Portfolio Analyzer", layout="wide")
 
-# ---------- Sidebar navigation menu ----------
+# Sidebar
 with st.sidebar:
     st.title("📊 Portfolio Menu")
-    menu = st.radio(
-        "Navigation",
-        ["📁 Upload CSV", "📈 Portfolio Overview", "📉 Performance & Risk Analytics"]
-    )
+    menu = st.radio("Navigation", ["📁 Upload CSV", "📈 Portfolio Overview", "📉 Performance & Risk Analytics"])
     if "last_updated" in st.session_state:
         st.caption(f"Last updated: {st.session_state['last_updated']}")
     if "portfolio_filename" in st.session_state:
         st.caption(f"File: {st.session_state['portfolio_filename']}")
 
-# Initialize session state for file storage
+# Session state init
 if "portfolio_file" not in st.session_state:
     st.session_state.portfolio_file = None
     st.session_state.portfolio_filename = None
 
-# ---------- Upload CSV ----------
+# Upload
 if menu == "📁 Upload CSV":
-    st.title("📁 Upload Portfolio CSV")
-    st.info("Upload a CSV with columns: Ticker, Shares, Buy Price, Buy Date")
-    uploaded = st.file_uploader("Upload CSV File", type=["csv"])
+    st.title("Upload Portfolio CSV")
+    st.info("Columns: Ticker, Shares, Buy Price, Buy Date")
+    uploaded = st.file_uploader("Upload CSV", type=["csv"])
     if uploaded:
         st.session_state.portfolio_file = uploaded.read()
         st.session_state.portfolio_filename = uploaded.name
         st.session_state.last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        st.success("✅ File uploaded successfully. Use the sidebar to continue.")
+        st.success("File uploaded successfully.")
 
-# ---------- Process uploaded CSV for other pages ----------
+# Process file
 file_content = st.session_state.get('portfolio_file')
 if file_content and menu != "📁 Upload CSV":
-    # Read and parse CSV
-    decoded = StringIO(file_content.decode('utf-8'))
-    df = pd.read_csv(decoded)
-    df["Buy Date"] = pd.to_datetime(df["Buy Date"])
+    df = pd.read_csv(StringIO(file_content.decode('utf-8')))
+    df['Buy Date'] = pd.to_datetime(df['Buy Date'])
     today = datetime.today()
-
-    # Validate columns
-    required = ["Ticker", "Shares", "Buy Price", "Buy Date"]
-    if not all(col in df.columns for col in required):
-        st.error("❌ CSV must contain: Ticker, Shares, Buy Price, Buy Date")
+    required = ["Ticker","Shares","Buy Price","Buy Date"]
+    if not all(c in df.columns for c in required):
+        st.error("CSV must contain: Ticker, Shares, Buy Price, Buy Date")
         st.stop()
 
-    # Prepare storage
+    # Fetch data
     names, prices, dividends_map, history_map = {}, [], {}, {}
-
-    # Fetch data and valuation
     for _, row in df.iterrows():
-        ticker, buy_date = row['Ticker'], row['Buy Date']
-        tk = yf.Ticker(ticker)
-        # Historical prices
-        history = tk.history(start=buy_date, end=today)
-        history_map[ticker] = history
-        # Info
+        t, bd = row['Ticker'], row['Buy Date']
+        tk = yf.Ticker(t)
+        history = tk.history(start=bd, end=today)
+        history_map[t] = history
         info = tk.info
-        names[ticker] = info.get('shortName', ticker)
+        names[t] = info.get('shortName', t)
         prices.append(history['Close'].iloc[-1] if not history.empty else np.nan)
-        # Dividends
-        dividends_map[ticker] = fetch_annual_dividends(ticker, buy_date, today)
-        # Save P/E and Market Cap
-        df.loc[df['Ticker'] == ticker, 'P/E'] = info.get('trailingPE', np.nan)
-        df.loc[df['Ticker'] == ticker, 'Market Cap'] = info.get('marketCap', np.nan)
+        dividends_map[t] = fetch_annual_dividends(t, bd, today)
+        df.loc[df['Ticker']==t, 'P/E'] = info.get('trailingPE', np.nan)
+        df.loc[df['Ticker']==t, 'Market Cap'] = info.get('marketCap', np.nan)
 
-    # Compute value metrics
+    # Calculate metrics
     df['Current'] = prices
-    df['Value'] = df['Current'] * df['Shares']
-    df['Invested'] = df['Shares'] * df['Buy Price']
-    df['Abs Perf'] = df['Value'] - df['Invested']
-    df['Rel Perf'] = df['Abs Perf'] / df['Invested']
+    df['Value'] = df['Current']*df['Shares']
+    df['Invested'] = df['Shares']*df['Buy Price']
+    df['Abs Perf'] = df['Value']-df['Invested']
+    df['Rel Perf'] = df['Abs Perf']/df['Invested']
     df['Name'] = df['Ticker'].map(names)
-
     total_value = df['Value'].sum()
     total_pl = df['Abs Perf'].sum()
 
-    # ---------- Portfolio Overview ----------
+    # Overview
     if menu == "📈 Portfolio Overview":
-        st.title("📈 Portfolio Overview")
-        st.subheader("Positions")
-        display_df = df[['Name','Ticker','Value','Abs Perf','Rel Perf','P/E','Market Cap']].copy()
-        display_df.rename(columns={
+        st.title("Portfolio Overview")
+        cols = ['Name','Ticker','Value','Abs Perf','Rel Perf','P/E','Market Cap']
+        display = df[cols].copy()
+        display.rename(columns={
             'Value':'Position Size (€)',
-            'Abs Perf':'Absolute Performance (€)',
-            'Rel Perf':'Relative Performance (%)',
+            'Abs Perf':'Absolute Perf (€)',
+            'Rel Perf':'Relative Perf (%)',
             'Market Cap':'Market Cap (€)'
         }, inplace=True)
-        display_df['Relative Performance (%)'] *= 100
-        display_df['Market Cap (€)'] = display_df['Market Cap (€)'].apply(lambda x: f"€{x:,.0f}")
-        st.dataframe(
-            display_df.style.format({
-                'Position Size (€)': '€{:.2f}',
-                'Absolute Performance (€)': '€{:.2f}',
-                'Relative Performance (%)': '{:.2f}%',
-                'P/E':'{:.2f}'
-            }), use_container_width=True
-        )
+        display['Relative Perf (%)']*=100
+        display['Market Cap (€)']=display['Market Cap (€)'].apply(lambda x:f"€{x:,.0f}")
+        st.dataframe(display.style.format({
+            'Position Size (€)':'€{:.2f}',
+            'Absolute Perf (€)':'€{:.2f}',
+            'Relative Perf (%)':'{:.2f}%',
+            'P/E':'{:.2f}'
+        }), use_container_width=True)
 
-        st.subheader("Portfolio Summary")
-        c1, c2 = st.columns(2)
-        c1.metric("Total Portfolio Value", f"€{total_value:.2f}")
-        c2.metric("Total Profit/Loss", f"€{total_pl:.2f}")
+        st.subheader("Summary")
+        c1,c2 = st.columns(2)
+        c1.metric("Total Value", f"€{total_value:.2f}")
+        c2.metric("Total P/L", f"€{total_pl:.2f}")
 
         st.subheader("Allocation by Value")
-        fig1, ax1 = plt.subplots(figsize=(6,4))
-        colors = plt.get_cmap('tab20').colors
-        wedges, texts, autotexts = ax1.pie(
-            df['Value'], labels=df['Ticker'], autopct='%1.1f%%', startangle=140,
-            colors=colors[:len(df)]
-        )
-        for t in texts + autotexts:
-            t.set_fontsize(8)
-        ax1.axis('equal')
-        st.pyplot(fig1)
+        fig,ax=plt.subplots(figsize=(5,3))
+        colors=plt.get_cmap('tab20').colors
+        ax.pie(df['Value'],labels=df['Ticker'],autopct='%1.1f%%',startangle=140,colors=colors)
+        ax.axis('equal')
+        st.pyplot(fig)
 
-    # ---------- Performance & Risk Analytics ----------
+    # Performance & Risk
     elif menu == "📉 Performance & Risk Analytics":
-        st.title("📉 Performance & Risk Analytics")
+        st.title("Performance & Risk Analytics")
 
-        # Per-asset expanders with risk + valuation
-        returns_list = []
-        start_date = df['Buy Date'].min().date()
-        benchmark = yf.Ticker('^GSPC').history(start=start_date, end=today.date())['Close'].pct_change()
+        # Per-asset metrics
+        returns_list=[]
+        start_date=df['Buy Date'].min().date()
+        bench= yf.Ticker('^GSPC').history(start=start_date,end=today.date())['Close'].pct_change()
+        for t,h in history_map.items():
+            r=h['Close'].pct_change()
+            returns_list.append(r)
+            vol=r.std()*np.sqrt(252)
+            mdd=calculate_max_drawdown(r)
+            pr=pd.concat([r,bench],axis=1).dropna()
+            beta=linregress(pr.iloc[:,1],pr.iloc[:,0])[0] if not pr.empty else np.nan
+            pe=df.loc[df['Ticker']==t,'P/E'].iloc[0]
+            mcap=df.loc[df['Ticker']==t,'Market Cap'].iloc[0]
+            with st.expander(f"{names[t]} ({t})"):
+                st.write(f"P/E: {pe:.2f}")
+                st.write(f"Market Cap: €{mcap:,.0f}")
+                st.write(f"Volatility: {vol:.4f}")
+                st.write(f"Max Drawdown: {mdd:.4f}")
+                st.write(f"Beta: {beta:.4f}")
 
-        for ticker, hist in history_map.items():
-            ret = hist['Close'].pct_change()
-            returns_list.append(ret)
-            vol = ret.std() * np.sqrt(252)
-            mdd = calculate_max_drawdown(ret)
-            paired = pd.concat([ret, benchmark], axis=1).dropna()
-            beta = linregress(paired.iloc[:,1], paired.iloc[:,0])[0] if not paired.empty else np.nan
-            pe = df.loc[df['Ticker'] == ticker, 'P/E'].iloc[0]
-            mcap = df.loc[df['Ticker'] == ticker, 'Market Cap'].iloc[0]
-            with st.expander(f"📌 {names[ticker]} ({ticker})"):
-                st.write(f"**P/E Ratio:** {pe:.2f}")
-                st.write(f"**Market Cap:** €{mcap:,.0f}")
-                st.write(f"**Volatility (Annualized):** {vol:.4f}")
-                st.write(f"**Max Drawdown:** {mdd:.4f}")
-                st.write(f"**Beta vs S&P500:** {beta:.4f}")
-
-                    # Portfolio-level analytics
-            total_return = (cum_ret - 1) * 100  # Total return as percentage
-            vol_port = port_returns.std() * np.sqrt(252)  # Annualized volatility
-            # Portfolio beta vs S&P500
-            paired_port = pd.concat([port_returns, benchmark], axis=1).dropna()
-            beta_port = linregress(paired_port.iloc[:,1], paired_port.iloc[:,0])[0] if not paired_port.empty else np.nan
+        # Portfolio metrics
+        if returns_list:
+            prt=pd.concat(returns_list,axis=1).mean(axis=1)
+            sharpe=prt.mean()/prt.std()*np.sqrt(252)
+            downside=prt[prt<0].std()*np.sqrt(252)
+            sortino=prt.mean()/downside if downside else np.nan
+            mdd_p=calculate_max_drawdown(prt)
+            days=(prt.index[-1]-prt.index[0]).days
+            yrs=days/365.25
+            cum_ret=(1+prt).prod()
+            cagr=calculate_cagr(1,cum_ret,yrs)
+            tot_ret=(cum_ret-1)*100
+            vol_p=prt.std()*np.sqrt(252)
+            bp=pd.concat([prt,bench],axis=1).dropna()
+            beta_p=linregress(bp.iloc[:,1],bp.iloc[:,0])[0] if not bp.empty else np.nan
 
             st.subheader("Portfolio Summary")
-            # First row of metrics: Total Return, CAGR, Volatility, Beta
-            r1c1, r1c2, r1c3, r1c4 = st.columns(4)
-            r1c1.metric("Total Return (%)", f"{total_return:.2f}%")
-            r1c2.metric("CAGR (%)", f"{cagr*100:.2f}%")
-            r1c3.metric("Annual Volatility", f"{vol_port:.2f}")
-            r1c4.metric("Portfolio Beta", f"{beta_port:.2f}")
+            r1c1,r1c2,r1c3,r1c4=st.columns(4)
+            r1c1.metric("Total Return (%)",f"{tot_ret:.2f}%")
+            r1c2.metric("CAGR (%)",f"{cagr*100:.2f}%")
+            r1c3.metric("Volatility",f"{vol_p:.2f}")
+            r1c4.metric("Beta",f"{beta_p:.2f}")
+            r2c1,r2c2,r2c3=st.columns(3)
+            r2c1.metric("Max Drawdown",f"{mdd_p:.2f}")
+            r2c2.metric("Sharpe",round(sharpe,3))
+            r2c3.metric("Sortino",round(sortino,3))
 
-            # Second row: Drawdown, Sharpe, Sortino
-            r2c1, r2c2, r2c3 = st.columns(3)
-            r2c1.metric("Max Drawdown", f"{port_mdd:.2f}")
-            r2c2.metric("Sharpe Ratio", round(sharpe, 3))
-            r2c3.metric("Sortino Ratio", round(sortino, 3))
-
-            # Cumulative return chart
             st.subheader("Cumulative Return")
-            default_benchmarks = ["S&P 500", "Gold (GLD)", "Bitcoin (BTC-USD)"]
-            selected = st.multiselect("Include Benchmarks:", default_benchmarks)
-            custom = st.text_input("Add custom benchmark ticker (comma-separated):", "")
-            custom_list = [t.strip() for t in custom.split(',') if t.strip()]
-
-            cum_port = (1 + port_returns).cumprod()
-            fig3, ax3 = plt.subplots(figsize=(6,4))
-            ax3.plot(cum_port.index, cum_port.values, label="Portfolio", linewidth=2)
-            if "S&P 500" in selected:
-                cum_sp = (1 + benchmark).cumprod()
-                ax3.plot(cum_sp.index, cum_sp.values, linestyle='--', label="S&P 500")
-            if "Gold (GLD)" in selected:
-                gold_ret = yf.Ticker("GLD").history(start=start_date,end=today)['Close'].pct_change()
-                ax3.plot((1+gold_ret).cumprod().index,(1+gold_ret).cumprod().values, linestyle='--', label="Gold (GLD)")
-            if "Bitcoin (BTC-USD)" in selected:
-                btc_ret = yf.Ticker("BTC-USD").history(start=start_date,end=today)['Close'].pct_change()
-                ax3.plot((1+btc_ret).cumprod().index,(1+btc_ret).cumprod().values, linestyle='--', label="Bitcoin (BTC-USD)")
-            for t in custom_list:
+            cb=st.multiselect("Benchmarks",["S&P 500","Gold (GLD)","Bitcoin (BTC-USD)"])
+            custom=st.text_input("Custom tickers, comma-separated","")
+            cl=[x.strip() for x in custom.split(',') if x.strip()]
+            fig3,ax3=plt.subplots(figsize=(5,3))
+            ax3.plot((1+prt).cumprod(),label="Portfolio",linewidth=2)
+            if "S&P 500" in cb:
+                sp=(1+bench).cumprod()
+                ax3.plot(sp,linestyle='--',label="S&P 500")
+            if "Gold (GLD)" in cb:
+                g=yf.Ticker("GLD").history(start=start_date,end=today)['Close'].pct_change()
+                ax3.plot((1+g).cumprod(),linestyle='--',label="Gold (GLD)")
+            if "Bitcoin (BTC-USD)" in cb:
+                b=yf.Ticker("BTC-USD").history(start=start_date,end=today)['Close'].pct_change()
+                ax3.plot((1+b).cumprod(),linestyle='--',label="Bitcoin")
+            for x in cl:
                 try:
-                    ret = yf.Ticker(t).history(start=start_date,end=today)['Close'].pct_change()
-                    ax3.plot((1+ret).cumprod().index,(1+ret).cumprod().values, linestyle='--', label=t)
-                except Exception:
-                    st.warning(f"Failed to fetch data for {t}")
+                    temp=yf.Ticker(x).history(start=start_date,end=today)['Close'].pct_change()
+                    ax3.plot((1+temp).cumprod(),linestyle='--',label=x)
+                except:
+                    st.warning(f"{x} fetch failed")
             ax3.set_xlabel('Date')
             ax3.set_ylabel('Cumulative Return')
             ax3.legend(fontsize=8)
             st.pyplot(fig3)
 
-            # Received Dividends chart (P&R tab)
+            # Dividends in P&R
             st.subheader("Received Dividends")
-            adj_dividends = {}
-            for ticker, series in dividends_map.items():
-                shares = df.loc[df['Ticker'] == ticker, 'Shares'].iloc[0]
-                adj_dividends[ticker] = series * shares
-            div_df = pd.DataFrame(adj_dividends).fillna(0).sort_index()
-            if not div_df.empty:
-                fig4, ax4 = plt.subplots(figsize=(6,3))
-                colors = plt.get_cmap('tab20').colors
-                div_df.plot(kind='bar', stacked=True, ax=ax4, color=colors[:len(div_df.columns)])
+            adj={}
+            for t,s in dividends_map.items():
+                adj[t]=s*df.loc[df['Ticker']==t,'Shares'].iloc[0]
+            ddf=pd.DataFrame(adj).fillna(0).sort_index()
+            if not ddf.empty:
+                fig4,ax4=plt.subplots(figsize=(5,3))
+                ddf.plot(kind='bar',stacked=True,ax=ax4,color=plt.get_cmap('tab20').colors)
                 ax4.set_xlabel('Year')
                 ax4.set_ylabel('Dividends (€)')
                 ax4.set_title('Annual Dividends Received')
-                legend = ax4.legend(fontsize=8, loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0)
-                fig4.subplots_adjust(right=0.75)
+                lg=ax4.legend(fontsize=8,loc='upper left',bbox_to_anchor=(1.02,1))
+                fig4.subplots_adjust(right=0.8)
                 st.pyplot(fig4)
             else:
-                st.info("No dividend data found for the tickers.")
+                st.info("No dividends.")
