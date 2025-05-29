@@ -157,7 +157,7 @@ if file_content and menu != "📁 Upload CSV":
         st.subheader("Received Dividends")
         div_df = pd.DataFrame(dividends_map).fillna(0).sort_index()
         if not div_df.empty:
-            fig2, ax2 = plt.subplots(figsize=(6, 4))
+            fig2, ax2 = plt.subplots(figsize=(5, 3))
             colors = plt.get_cmap('tab20').colors
             div_df.plot(
                 kind='bar',
