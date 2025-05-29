@@ -157,8 +157,8 @@ if file_content and menu != "📁 Upload CSV":
             paired = pd.concat([r, benchmark], axis=1).dropna()
             beta = linregress(paired.iloc[:,1], paired.iloc[:,0])[0] if not paired.empty else np.nan
             pe = df.loc[df['Ticker'] == t, 'P/E'].iloc[0]
-            mcap = df.loc[df['Ticker'] == t, 'Market Cap'].iloc[0]
-            mcap_str = format_market_cap(mcap)
+            mcap_val = df.loc[df['Ticker'] == t, 'Market Cap'].iloc[0]
+            mcap_str = format_market_cap(mcap_val)
             with st.expander(f"{names[t]} ({t})"):
                 st.write(f"P/E Ratio: {pe:.2f}")
                 st.write(f"Market Cap: {mcap_str}")
