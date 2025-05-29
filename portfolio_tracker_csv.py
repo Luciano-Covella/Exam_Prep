@@ -182,24 +182,26 @@ if file_content and menu != "📁 Upload CSV":
                 st.write(f"**Max Drawdown:** {mdd:.4f}")
                 st.write(f"**Beta vs S&P500:** {beta:.4f}")
 
-        # Portfolio-level analytics
-        if returns_list:
-            port_returns = pd.concat(returns_list, axis=1).mean(axis=1)
-            sharpe = port_returns.mean()/port_returns.std()*np.sqrt(252)
-            downside = port_returns[port_returns < 0].std()*np.sqrt(252)
-            sortino = port_returns.mean()/downside if downside else np.nan
-            port_mdd = calculate_max_drawdown(port_returns)
-            days = (port_returns.index[-1] - port_returns.index[0]).days
-            years = days / 365.25
-            cum_ret = (1 + port_returns).prod()
-            cagr = calculate_cagr(1, cum_ret, years)
+                    # Portfolio-level analytics
+            total_return = (cum_ret - 1) * 100  # Total return as percentage
+            vol_port = port_returns.std() * np.sqrt(252)  # Annualized volatility
+            # Portfolio beta vs S&P500
+            paired_port = pd.concat([port_returns, benchmark], axis=1).dropna()
+            beta_port = linregress(paired_port.iloc[:,1], paired_port.iloc[:,0])[0] if not paired_port.empty else np.nan
 
             st.subheader("Portfolio Summary")
-            p1, p2, p3, p4 = st.columns(4)
-            p1.metric("Sharpe Ratio", round(sharpe,3))
-            p2.metric("Sortino Ratio", round(sortino,3))
-            p3.metric("Max Drawdown", f"{port_mdd:.2f}")
-            p4.metric("CAGR", f"{cagr*100:.2f}%")
+            # First row of metrics: Total Return, CAGR, Volatility, Beta
+            r1c1, r1c2, r1c3, r1c4 = st.columns(4)
+            r1c1.metric("Total Return (%)", f"{total_return:.2f}%")
+            r1c2.metric("CAGR (%)", f"{cagr*100:.2f}%")
+            r1c3.metric("Annual Volatility", f"{vol_port:.2f}")
+            r1c4.metric("Portfolio Beta", f"{beta_port:.2f}")
+
+            # Second row: Drawdown, Sharpe, Sortino
+            r2c1, r2c2, r2c3 = st.columns(3)
+            r2c1.metric("Max Drawdown", f"{port_mdd:.2f}")
+            r2c2.metric("Sharpe Ratio", round(sharpe, 3))
+            r2c3.metric("Sortino Ratio", round(sortino, 3))
 
             # Cumulative return chart
             st.subheader("Cumulative Return")
