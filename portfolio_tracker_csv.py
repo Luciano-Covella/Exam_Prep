@@ -110,36 +110,46 @@ if file_content and menu != "📁 Upload CSV":
     total_value = df['Value'].sum()
     total_pl = df['Abs Perf'].sum()
 
-        # Portfolio Overview
+            # Portfolio Overview
     if menu == "📈 Portfolio Overview":
         st.title("Portfolio Overview")
         # Only show core columns (remove P/E & Market Cap)
-        cols = ['Name','Ticker','Value','Abs Perf','Rel Perf']
-        display = df[cols].copy()
+        cols = ['Name', 'Ticker', 'Position Size (€)', 'Absolute Perf (€)', 'Relative Perf (%)']
+        # Prepare dataframe for display
+        display = df[['Name', 'Ticker', 'Value', 'Abs Perf', 'Rel Perf']].copy()
         display.rename(columns={
-            'Value':'Position Size (€)',
-            'Abs Perf':'Absolute Perf (€)',
-            'Rel Perf':'Relative Perf (%)'
+            'Value': 'Position Size (€)',
+            'Abs Perf': 'Absolute Perf (€)',
+            'Rel Perf': 'Relative Perf (%)'
         }, inplace=True)
         display['Relative Perf (%)'] *= 100
-        st.dataframe(display.style.format({
-            'Position Size (€)': '€{:.2f}',
-            'Absolute Perf (€)': '€{:.2f}',
-            'Relative Perf (%)': '{:.2f}%'
-        }), use_container_width=True)
+        st.dataframe(
+            display.style.format({
+                'Position Size (€)': '€{:.2f}',
+                'Absolute Perf (€)': '€{:.2f}',
+                'Relative Perf (%)': '{:.2f}%'
+            }),
+            use_container_width=True
+        )
 
+        # Summary metrics
         st.subheader("Summary")
         c1, c2 = st.columns(2)
         c1.metric("Total Value", f"€{total_value:.2f}")
         c2.metric("Total P/L", f"€{total_pl:.2f}")
 
+        # Allocation pie chart with dynamic font sizing
         st.subheader("Allocation by Value")
         fig, ax = plt.subplots(figsize=(5, 3))
         colors = plt.get_cmap('tab20').colors
         n = len(df)
         fontsize = max(6, 12 - n // 2)
         wedges, texts, autotexts = ax.pie(
-            df['Value'], labels=df['Ticker'], autopct='%1.1f%%', startangle=140, colors=colors
+            df['Value'],
+            labels=df['Ticker'],
+            autopct='%1.1f%%',
+            startangle=140,
+            colors=colors
         )
         for txt in texts + autotexts:
             txt.set_fontsize(fontsize)
