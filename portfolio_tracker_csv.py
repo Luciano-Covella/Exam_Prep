@@ -33,7 +33,6 @@ def fetch_annual_dividends(ticker: str, start_date: datetime, end_date: datetime
     idx = dividends.index
     if idx.tz is not None:
         idx = idx.tz_localize(None)
-    # Create mask with naive datetimes
     mask = (idx >= pd.to_datetime(start_date)) & (idx <= pd.to_datetime(end_date))
     filtered = dividends.copy()
     filtered.index = idx
@@ -225,7 +224,7 @@ if file_content and menu != "📁 Upload CSV":
             p3.metric("Max Drawdown", round(port_mdd,3))
             p4.metric("CAGR", f"{cagr*100:.2f}%")
 
-                        st.subheader("Cumulative Return")
+            st.subheader("Cumulative Return")
             # Option to include external benchmarks
             benchmarks = st.multiselect(
                 "Include Benchmarks:",
