@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 import pandas as pd
 import yfinance as yf
@@ -379,7 +380,6 @@ if menu_option == TEXT["menu_overview"]:
     st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
     st.subheader(TEXT["allocation_by_value_label"])
     fig_value, ax_value = plt.subplots(figsize=(4, 2.5))
-    # Force small label fonts inside pie; use subheader as chart title
     wedges_value, texts_value, autotexts_value = ax_value.pie(
         df_portfolio["Value"],
         labels=df_portfolio["Ticker"],
@@ -387,7 +387,6 @@ if menu_option == TEXT["menu_overview"]:
         startangle=140,
         colors=PIE_CHART_COLORS,
     )
-    # Set label font sizes uniformly small
     for t in texts_value:
         t.set_fontsize(6)
     for at in autotexts_value:
@@ -502,7 +501,7 @@ elif menu_option == TEXT["menu_analytics"]:
         row2_cols[3].metric(TEXT["sortino_label"], f"{sortino_ratio:.2f}")
 
         # ------------------------------------------------
-        # Cumulative Return Chart
+        # Cumulative Return Chart (no title)
         # ------------------------------------------------
         st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
         st.subheader(TEXT["cumulative_return_label"])
@@ -518,7 +517,6 @@ elif menu_option == TEXT["menu_analytics"]:
         btc_returns = btc_hist["Close"].pct_change().dropna()
         ax_cum.plot((1 + btc_returns).cumprod(), linestyle="--", label="Bitcoin (BTC-USD)", color="#d62728")
 
-        ax_cum.set_title("Cumulative Return", fontsize=12, pad=10)
         ax_cum.set_xlabel("Date", fontsize=6)
         ax_cum.set_ylabel("Cum. Return", fontsize=6)
         ax_cum.tick_params(axis="x", labelsize=5, rotation=45)
@@ -530,7 +528,7 @@ elif menu_option == TEXT["menu_analytics"]:
         st.pyplot(fig_cum)
 
         # ------------------------------------------------
-        # Received Dividends Chart
+        # Received Dividends Chart (no title)
         # ------------------------------------------------
         st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
         st.subheader(TEXT["received_dividends_label"])
@@ -545,7 +543,6 @@ elif menu_option == TEXT["menu_analytics"]:
             fig_div, ax_div = plt.subplots(figsize=(4, 2.5))
             dividends_df.plot(kind="bar", stacked=True, ax=ax_div, color=PIE_CHART_COLORS)
 
-            ax_div.set_title(TEXT["annual_dividends_chart_title"], fontsize=12, pad=10)
             ax_div.set_xlabel("Year", fontsize=6)
             ax_div.set_ylabel("Dividends (€)", fontsize=6)
             ax_div.tick_params(axis="x", labelsize=5, rotation=45)
@@ -560,7 +557,7 @@ elif menu_option == TEXT["menu_analytics"]:
             st.info(TEXT["no_dividends_message"])
 
         # ------------------------------------------------
-        # Return Correlation Matrix
+        # Return Correlation Matrix (no title)
         # ------------------------------------------------
         st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
         st.subheader("Return Correlation Matrix")
@@ -578,7 +575,6 @@ elif menu_option == TEXT["menu_analytics"]:
         cax = ax_corr.matshow(corr_matrix, cmap="viridis")
         fig_corr.colorbar(cax, fraction=0.046, pad=0.04)
 
-        ax_corr.set_title("Correlation Matrix", pad=10, fontsize=12)
         ax_corr.set_xticks(range(len(corr_matrix.columns)))
         ax_corr.set_yticks(range(len(corr_matrix.index)))
         ax_corr.set_xticklabels(corr_matrix.columns, rotation=90, fontsize=5)
@@ -591,3 +587,4 @@ elif menu_option == TEXT["menu_analytics"]:
 
     else:
         st.info("Not enough data for performance & risk analytics.")
+```
