@@ -216,10 +216,9 @@ if st.session_state.theme == "Dark":
         .stSelectbox>div>div>div>div, .stRadio>div>label {
             color: #FAFAFA !important;
         }
-        /* File uploader drop container */
+        /* File uploader drop container background */
         [data-testid="stFileUploaderDropContainer"] {
             background-color: #2A2A2A !important;
-            color: #FAFAFA !important;
             border: 1px dashed #555 !important;
         }
         [data-testid="stFileUploaderDropContainer"] * {
@@ -228,13 +227,22 @@ if st.session_state.theme == "Dark":
         /* File uploader interactive area */
         [data-testid="stFileUploaderInteractiveArea"] {
             background-color: #2A2A2A !important;
-            color: #FAFAFA !important;
+        }
+        /* Uploader placeholder text (darker for visibility) */
+        [data-testid="stFileUploaderDropContainer"] p, 
+        [data-testid="stFileUploaderDropContainer"] span {
+            color: #DDDDDD !important;
         }
         /* Browse files button inside uploader */
         [data-testid="stFileUploaderDropContainer"] button {
             background-color: #3A3A3A !important;
             color: #FAFAFA !important;
             border: 1px solid #555 !important;
+        }
+        /* Emoji and cloud icon within uploader text */
+        [data-testid="stFileUploaderDropContainer"] svg, 
+        [data-testid="stFileUploaderDropContainer"] span.ec-icon {
+            color: #DDDDDD !important;
         }
         </style>
         """,
