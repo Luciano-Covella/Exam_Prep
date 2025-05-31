@@ -283,13 +283,40 @@ if st.session_state.theme == "Dark":
             background-color: #171A21;
             color: #FAFAFA;
         }
-        /* Override text elements */
-        .css-18e3th9, .css-1d391kg, .css-1v3fvcr, .css-1x0uki7 {
-            color: #FAFAFA;
+        /* Force all nested text elements in main area to white */
+        [data-testid="stAppViewContainer"] * {
+            color: #FAFAFA !important;
         }
-        /* Checkbox/radio color fix */
-        input[type="radio"]:checked + span, input[type="checkbox"]:checked + span {
-            color: #FAFAFA;
+        /* Force all nested text elements in sidebar to white */
+        [data-testid="stSidebar"] * {
+            color: #FAFAFA !important;
+        }
+        /* Override metric value colors so they remain visible */
+        .css-10trblm { /* metric delta text */
+            color: #FAFAFA !important;
+        }
+        .css-1r3r1j0 { /* metric main value text */
+            color: #FAFAFA !important;
+        }
+        /* Override button text color */
+        button, .stButton>button>div {
+            color: #FAFAFA !important;
+        }
+        /* Ensure headers and subheaders are white */
+        h1, h2, h3, h4, h5, h6 {
+            color: #FAFAFA !important;
+        }
+        /* Ensure table text (dataframe) appears white */
+        .css-1kyxreq { /* dataframe text */
+            color: #FAFAFA !important;
+        }
+        /* Ensure input labels and placeholder text are white */
+        input, textarea, label {
+            color: #FAFAFA !important;
+        }
+        /* Override selectbox/dropdown text */
+        .stSelectbox>div>div>div>div, .stRadio>div>label {
+            color: #FAFAFA !important;
         }
         </style>
         """,
