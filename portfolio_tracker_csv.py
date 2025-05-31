@@ -236,13 +236,16 @@ def validate_portfolio_df(df: pd.DataFrame) -> None:
 # ====================================
 st.set_page_config(page_title=TEXT["app_title"], layout="wide")
 
-# Initialize session state for portfolio DataFrame
+# Initialize session state for portfolio DataFrame & theme
 if "portfolio_df" not in st.session_state:
     st.session_state.portfolio_df = None
     st.session_state.portfolio_filename = None
     st.session_state.last_updated = None
 
-# Sidebar: Navigation and Captions
+if "theme" not in st.session_state:
+    st.session_state.theme = "Light"  # default theme
+
+# Sidebar: Navigation, Theme Toggle, and Captions
 with st.sidebar:
     st.title(TEXT["sidebar_title"])
     menu_option = st.radio(
@@ -250,10 +253,48 @@ with st.sidebar:
         [TEXT["menu_upload"], TEXT["menu_overview"], TEXT["menu_analytics"]],
     )
 
+    # Theme toggle
+    theme_choice = st.radio(
+        "Theme",
+        ["Light", "Dark"],
+        index=0 if st.session_state.theme == "Light" else 1,
+        key="theme_radio",
+        help="Toggle between Light and Dark mode",
+    )
+    st.session_state.theme = theme_choice
+
     if st.session_state.last_updated:
         st.caption(f"{TEXT['last_updated']}: {st.session_state.last_updated.strftime('%Y-%m-%d %H:%M:%S')}")
     if st.session_state.portfolio_filename:
         st.caption(f"{TEXT['file_name']}: {st.session_state.portfolio_filename}")
+
+# Apply CSS for Dark Mode if selected
+if st.session_state.theme == "Dark":
+    st.markdown(
+        """
+        <style>
+        /* Main content background and text */
+        [data-testid="stAppViewContainer"] {
+            background-color: #0E1117;
+            color: #FAFAFA;
+        }
+        /* Sidebar background and text */
+        [data-testid="stSidebar"] {
+            background-color: #171A21;
+            color: #FAFAFA;
+        }
+        /* Override text elements */
+        .css-18e3th9, .css-1d391kg, .css-1v3fvcr, .css-1x0uki7 {
+            color: #FAFAFA;
+        }
+        /* Checkbox/radio color fix */
+        input[type="radio"]:checked + span, input[type="checkbox"]:checked + span {
+            color: #FAFAFA;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ===============================
 # Upload CSV Section (Main Area)
@@ -283,7 +324,7 @@ if menu_option == TEXT["menu_upload"]:
         st.stop()
 
 # Retrieve the validated DataFrame
-df_portfolio = st.session_state.portfolio_df.copy()
+df_portfolio = st.session_state.portfolio_df
 today_date = datetime.today().date()
 
 # If user hasn't uploaded and is on Overview/Analytics, prompt them
@@ -512,7 +553,7 @@ elif menu_option == TEXT["menu_analytics"]:
         )
         income_yield_pct = (total_income_last_year / total_portfolio_value) * 100 if total_portfolio_value else 0.0
 
-        # Display Summary Metrics (fixed parentheses here)
+        # Display Summary Metrics
         st.subheader(TEXT["portfolio_summary"])
         row1_cols = st.columns(4)
         row1_cols[0].metric(TEXT["total_return_label"], f"{total_return_pct:.2f}%")
