@@ -242,7 +242,7 @@ if "portfolio_df" not in st.session_state:
     st.session_state.portfolio_filename = None
     st.session_state.last_updated = None
 
-# Sidebar: Upload & Navigation
+# Sidebar: Navigation and Captions
 with st.sidebar:
     st.title(TEXT["sidebar_title"])
     menu_option = st.radio(
@@ -255,7 +255,12 @@ with st.sidebar:
     if st.session_state.portfolio_filename:
         st.caption(f"{TEXT['file_name']}: {st.session_state.portfolio_filename}")
 
-    # File uploader (always present, but only active for upload menu)
+# ===============================
+# Upload CSV Section (Main Area)
+# ===============================
+if menu_option == TEXT["menu_upload"]:
+    st.title(TEXT["upload_csv_title"])
+    st.info(TEXT["upload_csv_info"])
     uploaded_file = st.file_uploader(TEXT["upload_button_label"], type=["csv"])
     if uploaded_file:
         try:
@@ -273,19 +278,18 @@ with st.sidebar:
         except Exception as e:
             st.error(f"{TEXT['upload_error']} {e}")
 
-# If no portfolio yet and not uploading, prompt user
-if st.session_state.portfolio_df is None:
-    if menu_option != TEXT["menu_upload"]:
-        st.info(TEXT["no_portfolio_message"])
-    # Only show upload page
-    if menu_option == TEXT["menu_upload"]:
-        st.title(TEXT["upload_csv_title"])
-        st.info(TEXT["upload_csv_info"])
-    st.stop()
+    # If no portfolio yet, stop here
+    if st.session_state.portfolio_df is None:
+        st.stop()
 
 # Retrieve the validated DataFrame
 df_portfolio = st.session_state.portfolio_df.copy()
 today_date = datetime.today().date()
+
+# If user hasn't uploaded and is on Overview/Analytics, prompt them
+if df_portfolio is None and menu_option in [TEXT["menu_overview"], TEXT["menu_analytics"]]:
+    st.info(TEXT["no_portfolio_message"])
+    st.stop()
 
 # Fetch name, price, dividends, and risk metrics for each unique ticker
 unique_tickers = df_portfolio["Ticker"].unique().tolist()
@@ -513,8 +517,8 @@ elif menu_option == TEXT["menu_analytics"]:
         row1_cols = st.columns(4)
         row1_cols[0].metric(TEXT["total_return_label"], f"{total_return_pct:.2f}%")
         row1_cols[1].metric(TEXT["cagr_label"], f"{cagr * 100:.2f}%" if not np.isnan(cagr) else "N/A")
-        row1_cols[2].metric(TEXT["volatility_label"], f"{portfolio_volatility:.2f}")
-        row1_cols[3].metric(TEXT["beta_label"], f"{portfolio_beta:.2f}")
+        row1_cols[2].(metric(TEXT["volatility_label"], f"{portfolio_volatility:.2f"))
+        row1_cols[3].metric(TEXT["beta_label"], f"{portfolio_beta:.2f")
 
         row2_cols = st.columns(4)
         row2_cols[0].metric(TEXT["income_yield_label"], f"{income_yield_pct:.2f}%")
