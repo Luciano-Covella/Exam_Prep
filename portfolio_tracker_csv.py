@@ -512,13 +512,13 @@ elif menu_option == TEXT["menu_analytics"]:
         )
         income_yield_pct = (total_income_last_year / total_portfolio_value) * 100 if total_portfolio_value else 0.0
 
-        # Display Summary Metrics
+        # Display Summary Metrics (fixed parentheses here)
         st.subheader(TEXT["portfolio_summary"])
         row1_cols = st.columns(4)
         row1_cols[0].metric(TEXT["total_return_label"], f"{total_return_pct:.2f}%")
         row1_cols[1].metric(TEXT["cagr_label"], f"{cagr * 100:.2f}%" if not np.isnan(cagr) else "N/A")
-        row1_cols[2].(metric(TEXT["volatility_label"], f"{portfolio_volatility:.2f"))
-        row1_cols[3].metric(TEXT["beta_label"], f"{portfolio_beta:.2f")
+        row1_cols[2].metric(TEXT["volatility_label"], f"{portfolio_volatility:.2f}")
+        row1_cols[3].metric(TEXT["beta_label"], f"{portfolio_beta:.2f}")
 
         row2_cols = st.columns(4)
         row2_cols[0].metric(TEXT["income_yield_label"], f"{income_yield_pct:.2f}%")
