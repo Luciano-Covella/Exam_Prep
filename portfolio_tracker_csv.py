@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 import pandas as pd
 import yfinance as yf
@@ -587,4 +586,4 @@ elif menu_option == TEXT["menu_analytics"]:
 
     else:
         st.info("Not enough data for performance & risk analytics.")
-```
+
