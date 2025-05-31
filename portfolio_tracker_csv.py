@@ -216,19 +216,27 @@ if st.session_state.theme == "Dark":
         .stSelectbox>div>div>div>div, .stRadio>div>label {
             color: #FAFAFA !important;
         }
-        /* File uploader container background for maximum contrast */
+        /* Uploader container background for maximum contrast */
         [data-testid="stFileUploaderDropContainer"] {
             background-color: #333333 !important;
             border: 1px dashed #666666 !important;
         }
-        /* Explicitly set uploader text to pure white */
-        [data-testid="stFileUploaderDropContainer"] * {
-            color: #FFFFFF !important;
+        [data-testid="stFileUploaderContainer"] {
+            background-color: #333333 !important;
         }
-        /* Cloud icon color */
-        [data-testid="stFileUploaderDropContainer"] svg, 
+        /* Force all uploader text/icons to black */
+        [data-testid="stFileUploaderDropContainer"] * {
+            color: #000000 !important;
+        }
+        /* Specifically override the “Drag and Drop file here – Limit 200MB per file • CSV” text */
+        [data-testid="stFileUploaderDropContainer"] > div > div > p {
+            color: #000000 !important;
+            font-weight: 500 !important;
+        }
+        /* Make the cloud emoji/icon black, too */
+        [data-testid="stFileUploaderDropContainer"] svg,
         [data-testid="stFileUploaderDropContainer"] span.ec-icon {
-            color: #FFFFFF !important;
+            color: #000000 !important;
         }
         /* Browse files button inside uploader */
         [data-testid="stFileUploaderDropContainer"] button {
@@ -237,9 +245,9 @@ if st.session_state.theme == "Dark":
             border: 1px solid #666666 !important;
         }
         /* Placeholder text */
-        [data-testid="stFileUploaderDropContainer"] p, 
+        [data-testid="stFileUploaderDropContainer"] p,
         [data-testid="stFileUploaderDropContainer"] span {
-            color: #EAEAEA !important;
+            color: #000000 !important;
         }
         </style>
         """,
