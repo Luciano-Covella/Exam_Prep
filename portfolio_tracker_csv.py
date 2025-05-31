@@ -168,9 +168,29 @@ with st.sidebar:
     if st.session_state.portfolio_filename:
         st.caption(f"{TEXT['file_name']}: {st.session_state.portfolio_filename}")
 
-# ================================
+# ====================================
+# Global CSS Overrides (Metric Text Size)
+# ====================================
+# Increase the font size of metric labels and values for better balance
+st.markdown(
+    """
+    <style>
+    /* Metric label (title) larger */
+    .css-10trblm {
+        font-size: 1.2rem !important;
+    }
+    /* Metric value larger */
+    .css-1r3r1j0 {
+        font-size: 2rem !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ====================================
 # Apply Dark‐Mode CSS (except on Upload page)
-# ================================
+# ====================================
 if st.session_state.theme == "Dark" and menu_option != TEXT["menu_upload"]:
     st.markdown(
         """
@@ -191,9 +211,9 @@ if st.session_state.theme == "Dark" and menu_option != TEXT["menu_upload"]:
         [data-testid="stSidebar"] * {
             color: #FAFAFA !important;
         }
-        /* Metric text overrides */
+        /* Metric text overrides (in dark mode) */
         .css-10trblm, .css-1r3r1j0 {
-            color: #FAFAFA !important;
+            color: #FFFFFF !important;
         }
         /* Button text */
         button, .stButton>button>div {
@@ -229,7 +249,7 @@ if menu_option == TEXT["menu_upload"]:
     st.title(TEXT["upload_csv_title"])
     st.info(TEXT["upload_csv_info"])
 
-    # No Dark‐Mode CSS here, so uploader uses default light styling
+    # No Dark‐Mode CSS is injected here, so uploader uses default light styling
     uploaded_file = st.file_uploader(TEXT["upload_button_label"], type=["csv"])
     if uploaded_file:
         try:
@@ -247,9 +267,9 @@ if menu_option == TEXT["menu_upload"]:
     if st.session_state.portfolio_df is None:
         st.stop()
 
-# Retrieve the stored DataFrame or show info if none
 df_portfolio = st.session_state.portfolio_df
 today_date = datetime.today().date()
+
 if df_portfolio is None and menu_option in [TEXT["menu_overview"], TEXT["menu_analytics"]]:
     st.info(TEXT["no_portfolio_message"])
     st.stop()
@@ -294,7 +314,6 @@ for idx, ticker_symbol in enumerate(unique_tickers, start=1):
             info_map[ticker_symbol] = {}
             risk_metrics_map[ticker_symbol] = {"volatility": np.nan, "beta": np.nan}
 
-# Populate DataFrame with calculated columns
 df_portfolio["Current"] = df_portfolio["Ticker"].map(prices_map)
 df_portfolio["Value"] = df_portfolio["Current"] * df_portfolio["Shares"]
 df_portfolio["Invested"] = df_portfolio["Buy Price"] * df_portfolio["Shares"]
@@ -349,7 +368,7 @@ if menu_option == TEXT["menu_overview"]:
     col2.metric("Total P/L", f"€{total_portfolio_pl:.2f}")
 
     st.subheader(TEXT["allocation_by_value_label"])
-    fig_value, ax_value = plt.subplots(figsize=(5, 3))
+    fig_value, ax_value = plt.subplots(figsize=(4, 2.5))  # smaller chart
     num_positions = len(df_portfolio)
     font_size = max(6, 12 - num_positions // 2)
     wedges_value, texts_value, autotexts_value = ax_value.pie(
@@ -369,7 +388,7 @@ if menu_option == TEXT["menu_overview"]:
         df_portfolio.groupby("Sector")["Value"].sum().reset_index().sort_values("Value", ascending=False)
     )
     if not sector_alloc.empty:
-        fig_sector, ax_sector = plt.subplots(figsize=(5, 3))
+        fig_sector, ax_sector = plt.subplots(figsize=(4, 2.5))  # smaller chart
         wedges_sector, texts_sector, autotexts_sector = ax_sector.pie(
             sector_alloc["Value"],
             labels=sector_alloc["Sector"],
@@ -393,7 +412,9 @@ elif menu_option == TEXT["menu_analytics"]:
     returns_list = []
     for ticker_symbol in unique_tickers:
         price_history = price_histories.get(ticker_symbol, pd.DataFrame())
-        daily_returns = price_history["Close"].pct_change().dropna() if not price_history.empty else pd.Series(dtype=float)
+        daily_returns = (
+            price_history["Close"].pct_change().dropna() if not price_history.empty else pd.Series(dtype=float)
+        )
         returns_list.append(daily_returns)
 
         metrics = risk_metrics_map.get(ticker_symbol, {"volatility": np.nan, "beta": np.nan})
@@ -428,7 +449,11 @@ elif menu_option == TEXT["menu_analytics"]:
 
         portfolio_volatility = portfolio_std * np.sqrt(252)
         paired_portfolio = pd.concat([portfolio_returns, benchmark_returns], axis=1).dropna()
-        portfolio_beta = linregress(paired_portfolio.iloc[:, 1], paired_portfolio.iloc[:, 0])[0] if not paired_portfolio.empty else np.nan
+        portfolio_beta = (
+            linregress(paired_portfolio.iloc[:, 1], paired_portfolio.iloc[:, 0])[0]
+            if not paired_portfolio.empty
+            else np.nan
+        )
 
         previous_year = today_date.year - 1
         total_income_last_year = sum(
@@ -452,7 +477,7 @@ elif menu_option == TEXT["menu_analytics"]:
         row2_cols[3].metric(TEXT["sortino_label"], f"{sortino_ratio:.2f}")
 
         st.subheader(TEXT["cumulative_return_label"])
-        fig_cum, ax_cum = plt.subplots(figsize=(5, 3))
+        fig_cum, ax_cum = plt.subplots(figsize=(4, 2.5))  # smaller chart
         ax_cum.plot((1 + portfolio_returns).cumprod(), label="Portfolio", linewidth=2)
         sp_returns = benchmark_returns
         ax_cum.plot((1 + sp_returns).cumprod(), linestyle="--", label="S&P 500")
@@ -462,9 +487,10 @@ elif menu_option == TEXT["menu_analytics"]:
         btc_hist = get_price_history("BTC-USD", analysis_start, analysis_end)
         btc_returns = btc_hist["Close"].pct_change().dropna()
         ax_cum.plot((1 + btc_returns).cumprod(), linestyle="--", label="Bitcoin (BTC-USD)")
-        ax_cum.set_xlabel("Date")
-        ax_cum.set_ylabel("Cumulative Return")
-        ax_cum.legend(fontsize=8)
+        ax_cum.set_xlabel("Date", fontsize=8)
+        ax_cum.set_ylabel("Cumulative Return", fontsize=8)
+        ax_cum.legend(fontsize=7)
+        fig_cum.tight_layout()
         st.pyplot(fig_cum)
 
         st.subheader(TEXT["received_dividends_label"])
@@ -474,13 +500,14 @@ elif menu_option == TEXT["menu_analytics"]:
             dividends_adjusted[ticker_symbol] = dividends_series * shares_count
         dividends_df = pd.DataFrame(dividends_adjusted).fillna(0).sort_index()
         if not dividends_df.empty:
-            fig_div, ax_div = plt.subplots(figsize=(5, 3))
+            fig_div, ax_div = plt.subplots(figsize=(4, 2.5))  # smaller chart
             dividends_df.plot(kind="bar", stacked=True, ax=ax_div, color=PIE_CHART_COLORS)
-            ax_div.set_xlabel("Year")
-            ax_div.set_ylabel("Dividends (€)")
-            ax_div.set_title(TEXT["annual_dividends_chart_title"])
-            legend = ax_div.legend(fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1))
-            fig_div.subplots_adjust(right=0.8)
+            ax_div.set_xlabel("Year", fontsize=8)
+            ax_div.set_ylabel("Dividends (€)", fontsize=8)
+            ax_div.set_title(TEXT["annual_dividends_chart_title"], fontsize=10)
+            legend = ax_div.legend(fontsize=7, loc="upper left", bbox_to_anchor=(1.02, 1))
+            fig_div.subplots_adjust(right=0.7)
+            fig_div.tight_layout()
             st.pyplot(fig_div)
         else:
             st.info(TEXT["no_dividends_message"])
@@ -495,14 +522,15 @@ elif menu_option == TEXT["menu_analytics"]:
             }
         )
         corr_matrix = all_returns_df.corr().fillna(0)
-        fig_corr, ax_corr = plt.subplots(figsize=(8, 6))
+        fig_corr, ax_corr = plt.subplots(figsize=(5, 3))  # smaller chart
         cax = ax_corr.matshow(corr_matrix, cmap="viridis")
-        fig_corr.colorbar(cax)
+        fig_corr.colorbar(cax, fraction=0.046, pad=0.04)
         ax_corr.set_xticks(range(len(corr_matrix.columns)))
         ax_corr.set_yticks(range(len(corr_matrix.index)))
-        ax_corr.set_xticklabels(corr_matrix.columns, rotation=90, fontsize=8)
-        ax_corr.set_yticklabels(corr_matrix.index, fontsize=8)
-        ax_corr.set_title("Return Correlation Matrix", pad=20)
+        ax_corr.set_xticklabels(corr_matrix.columns, rotation=90, fontsize=6)
+        ax_corr.set_yticklabels(corr_matrix.index, fontsize=6)
+        ax_corr.set_title("Return Correlation Matrix", pad=10, fontsize=10)
+        fig_corr.tight_layout()
         st.pyplot(fig_corr)
     else:
         st.info("Not enough data for performance & risk analytics.")
