@@ -197,6 +197,8 @@ if st.session_state.theme == "Dark":
         /* Button text */
         button, .stButton>button>div {
             color: #FAFAFA !important;
+            background-color: #2A2A2A !important;
+            border: 1px solid #555 !important;
         }
         /* Headers */
         h1, h2, h3, h4, h5, h6 {
@@ -220,14 +222,19 @@ if st.session_state.theme == "Dark":
             color: #FAFAFA !important;
             border: 1px dashed #555 !important;
         }
+        [data-testid="stFileUploaderDropContainer"] * {
+            color: #FAFAFA !important;
+        }
         /* File uploader interactive area */
         [data-testid="stFileUploaderInteractiveArea"] {
             background-color: #2A2A2A !important;
             color: #FAFAFA !important;
         }
-        /* Ensure the upload button text is white */
-        button[data-testid="stFileUploaderDropzone"] {
+        /* Browse files button inside uploader */
+        [data-testid="stFileUploaderDropContainer"] button {
+            background-color: #3A3A3A !important;
             color: #FAFAFA !important;
+            border: 1px solid #555 !important;
         }
         </style>
         """,
