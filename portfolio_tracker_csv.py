@@ -27,7 +27,6 @@ TEXT = {
     "upload_success": "File uploaded successfully.",
     "upload_error": "Unable to read CSV. Please ensure it's a valid UTF-8‐encoded CSV.",
     "no_portfolio_message": "Please upload a portfolio CSV to get started.",
-    "csv_missing_columns": "CSV must contain: Ticker, Shares, Buy Price, Buy Date",
     "last_updated": "Last updated",
     "file_name": "File",
     "overview_title": "Portfolio Overview",
