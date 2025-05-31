@@ -169,19 +169,33 @@ with st.sidebar:
         st.caption(f"{TEXT['file_name']}: {st.session_state.portfolio_filename}")
 
 # ====================================
-# Global CSS Overrides (Metric Text Size)
+# Global CSS Overrides
 # ====================================
-# Increase the font size of metric labels and values for better balance
 st.markdown(
     """
     <style>
-    /* Metric label (title) larger */
+    /* Increase metric label font and value font for balance */
     .css-10trblm {
-        font-size: 1.2rem !important;
+        font-size: 1.2rem !important;   /* Metric title */
     }
-    /* Metric value larger */
     .css-1r3r1j0 {
-        font-size: 2rem !important;
+        font-size: 2rem !important;     /* Metric value */
+    }
+    /* Section headers consistent size */
+    h2 {
+        font-size: 1.6rem !important;
+        margin-top: 1rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    h3 {
+        font-size: 1.4rem !important;
+        margin-top: 1rem !important;
+        margin-bottom: 0.3rem !important;
+    }
+    /* Add spacing between major sections */
+    .section-spacing {
+        margin-top: 20px;
+        margin-bottom: 20px;
     }
     </style>
     """,
@@ -189,7 +203,7 @@ st.markdown(
 )
 
 # ====================================
-# Apply Dark‐Mode CSS (except on Upload page)
+# Dark‐Mode CSS (except on Upload page)
 # ====================================
 if st.session_state.theme == "Dark" and menu_option != TEXT["menu_upload"]:
     st.markdown(
@@ -211,30 +225,26 @@ if st.session_state.theme == "Dark" and menu_option != TEXT["menu_upload"]:
         [data-testid="stSidebar"] * {
             color: #FAFAFA !important;
         }
-        /* Metric text overrides (in dark mode) */
+        /* Metrics in dark mode */
         .css-10trblm, .css-1r3r1j0 {
             color: #FFFFFF !important;
         }
-        /* Button text */
+        /* Button styling */
         button, .stButton>button>div {
             color: #FAFAFA !important;
             background-color: #2A2A2A !important;
             border: 1px solid #555 !important;
         }
         /* Headers */
-        h1, h2, h3, h4, h5, h6 {
+        h1, h2, h3 {
             color: #FAFAFA !important;
         }
         /* DataFrame text */
         .css-1kyxreq {
             color: #FAFAFA !important;
         }
-        /* Input labels and placeholders */
-        input, textarea, label {
-            color: #FAFAFA !important;
-        }
-        /* Selectbox and radio text */
-        .stSelectbox>div>div>div>div, .stRadio>div>label {
+        /* Inputs, labels, selects */
+        input, textarea, label, .stSelectbox>div>div>div>div, .stRadio>div>label {
             color: #FAFAFA !important;
         }
         </style>
@@ -243,13 +253,11 @@ if st.session_state.theme == "Dark" and menu_option != TEXT["menu_upload"]:
     )
 
 # ====================================
-# Upload CSV Section (Main Area)
+# Upload CSV Section
 # ====================================
 if menu_option == TEXT["menu_upload"]:
     st.title(TEXT["upload_csv_title"])
     st.info(TEXT["upload_csv_info"])
-
-    # No Dark‐Mode CSS is injected here, so uploader uses default light styling
     uploaded_file = st.file_uploader(TEXT["upload_button_label"], type=["csv"])
     if uploaded_file:
         try:
@@ -267,9 +275,9 @@ if menu_option == TEXT["menu_upload"]:
     if st.session_state.portfolio_df is None:
         st.stop()
 
+# Retrieve or stop if no data
 df_portfolio = st.session_state.portfolio_df
 today_date = datetime.today().date()
-
 if df_portfolio is None and menu_option in [TEXT["menu_overview"], TEXT["menu_analytics"]]:
     st.info(TEXT["no_portfolio_message"])
     st.stop()
@@ -337,6 +345,7 @@ total_portfolio_pl = df_portfolio["Abs Perf"].sum()
 # ====================================
 if menu_option == TEXT["menu_overview"]:
     st.title(TEXT["overview_title"])
+    st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
 
     overview_df = df_portfolio[["Name", "Ticker", "Value", "Abs Perf", "Rel Perf", "Sector", "Industry"]].copy()
     overview_df.rename(
@@ -367,8 +376,9 @@ if menu_option == TEXT["menu_overview"]:
     col1.metric("Total Value", f"€{total_portfolio_value:.2f}")
     col2.metric("Total P/L", f"€{total_portfolio_pl:.2f}")
 
+    st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
     st.subheader(TEXT["allocation_by_value_label"])
-    fig_value, ax_value = plt.subplots(figsize=(4, 2.5))  # smaller chart
+    fig_value, ax_value = plt.subplots(figsize=(4, 2.5))  # smaller, professional size
     num_positions = len(df_portfolio)
     font_size = max(6, 12 - num_positions // 2)
     wedges_value, texts_value, autotexts_value = ax_value.pie(
@@ -381,14 +391,16 @@ if menu_option == TEXT["menu_overview"]:
     for txt in texts_value + autotexts_value:
         txt.set_fontsize(font_size)
     ax_value.axis("equal")
+    fig_value.tight_layout()
     st.pyplot(fig_value)
 
+    st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
     st.subheader(TEXT["allocation_by_sector_label"])
     sector_alloc = (
         df_portfolio.groupby("Sector")["Value"].sum().reset_index().sort_values("Value", ascending=False)
     )
     if not sector_alloc.empty:
-        fig_sector, ax_sector = plt.subplots(figsize=(4, 2.5))  # smaller chart
+        fig_sector, ax_sector = plt.subplots(figsize=(4, 2.5))  # smaller size
         wedges_sector, texts_sector, autotexts_sector = ax_sector.pie(
             sector_alloc["Value"],
             labels=sector_alloc["Sector"],
@@ -399,6 +411,7 @@ if menu_option == TEXT["menu_overview"]:
         for txt in texts_sector + autotexts_sector:
             txt.set_fontsize(font_size)
         ax_sector.axis("equal")
+        fig_sector.tight_layout()
         st.pyplot(fig_sector)
     else:
         st.info("No sector data available.")
@@ -408,6 +421,7 @@ if menu_option == TEXT["menu_overview"]:
 # ====================================
 elif menu_option == TEXT["menu_analytics"]:
     st.title(TEXT["analytics_title"])
+    st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
 
     returns_list = []
     for ticker_symbol in unique_tickers:
@@ -463,12 +477,19 @@ elif menu_option == TEXT["menu_analytics"]:
         )
         income_yield_pct = (total_income_last_year / total_portfolio_value) * 100 if total_portfolio_value else 0.0
 
+        # ----------------------------------------
+        # Portfolio Summary Metrics (larger text)
+        # ----------------------------------------
         st.subheader(TEXT["portfolio_summary"])
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)  # small spacer
+
         row1_cols = st.columns(4)
         row1_cols[0].metric(TEXT["total_return_label"], f"{total_return_pct:.2f}%")
         row1_cols[1].metric(TEXT["cagr_label"], f"{cagr * 100:.2f}%" if not np.isnan(cagr) else "N/A")
         row1_cols[2].metric(TEXT["volatility_label"], f"{portfolio_volatility:.2f}")
         row1_cols[3].metric(TEXT["beta_label"], f"{portfolio_beta:.2f}")
+
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)  # small spacer
 
         row2_cols = st.columns(4)
         row2_cols[0].metric(TEXT["income_yield_label"], f"{income_yield_pct:.2f}%")
@@ -476,8 +497,13 @@ elif menu_option == TEXT["menu_analytics"]:
         row2_cols[2].metric(TEXT["sharpe_label"], f"{sharpe_ratio:.2f}")
         row2_cols[3].metric(TEXT["sortino_label"], f"{sortino_ratio:.2f}")
 
+        # ------------------------------------------------
+        # Cumulative Return Chart (smaller, professional)
+        # ------------------------------------------------
+        st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
         st.subheader(TEXT["cumulative_return_label"])
-        fig_cum, ax_cum = plt.subplots(figsize=(4, 2.5))  # smaller chart
+
+        fig_cum, ax_cum = plt.subplots(figsize=(4, 2.5))
         ax_cum.plot((1 + portfolio_returns).cumprod(), label="Portfolio", linewidth=2)
         sp_returns = benchmark_returns
         ax_cum.plot((1 + sp_returns).cumprod(), linestyle="--", label="S&P 500")
@@ -487,20 +513,27 @@ elif menu_option == TEXT["menu_analytics"]:
         btc_hist = get_price_history("BTC-USD", analysis_start, analysis_end)
         btc_returns = btc_hist["Close"].pct_change().dropna()
         ax_cum.plot((1 + btc_returns).cumprod(), linestyle="--", label="Bitcoin (BTC-USD)")
+
         ax_cum.set_xlabel("Date", fontsize=8)
         ax_cum.set_ylabel("Cumulative Return", fontsize=8)
-        ax_cum.legend(fontsize=7)
+        ax_cum.legend(fontsize=7, loc="upper left")
         fig_cum.tight_layout()
         st.pyplot(fig_cum)
 
+        # ------------------------------------------------
+        # Received Dividends Chart (smaller)
+        # ------------------------------------------------
+        st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
         st.subheader(TEXT["received_dividends_label"])
+
         dividends_adjusted: Dict[str, pd.Series] = {}
         for ticker_symbol, dividends_series in dividends_map.items():
             shares_count = df_portfolio.loc[df_portfolio["Ticker"] == ticker_symbol, "Shares"].iloc[0]
             dividends_adjusted[ticker_symbol] = dividends_series * shares_count
+
         dividends_df = pd.DataFrame(dividends_adjusted).fillna(0).sort_index()
         if not dividends_df.empty:
-            fig_div, ax_div = plt.subplots(figsize=(4, 2.5))  # smaller chart
+            fig_div, ax_div = plt.subplots(figsize=(4, 2.5))
             dividends_df.plot(kind="bar", stacked=True, ax=ax_div, color=PIE_CHART_COLORS)
             ax_div.set_xlabel("Year", fontsize=8)
             ax_div.set_ylabel("Dividends (€)", fontsize=8)
@@ -512,8 +545,12 @@ elif menu_option == TEXT["menu_analytics"]:
         else:
             st.info(TEXT["no_dividends_message"])
 
-        # Show correlation matrix by default
+        # ------------------------------------------------
+        # Return Correlation Matrix (smaller)
+        # ------------------------------------------------
+        st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
         st.subheader("Return Correlation Matrix")
+
         all_returns_df = pd.DataFrame(
             {
                 ticker_symbol: price_histories[ticker_symbol]["Close"].pct_change()
@@ -522,15 +559,19 @@ elif menu_option == TEXT["menu_analytics"]:
             }
         )
         corr_matrix = all_returns_df.corr().fillna(0)
-        fig_corr, ax_corr = plt.subplots(figsize=(5, 3))  # smaller chart
+
+        fig_corr, ax_corr = plt.subplots(figsize=(5, 3))
         cax = ax_corr.matshow(corr_matrix, cmap="viridis")
         fig_corr.colorbar(cax, fraction=0.046, pad=0.04)
+
         ax_corr.set_xticks(range(len(corr_matrix.columns)))
         ax_corr.set_yticks(range(len(corr_matrix.index)))
         ax_corr.set_xticklabels(corr_matrix.columns, rotation=90, fontsize=6)
         ax_corr.set_yticklabels(corr_matrix.index, fontsize=6)
         ax_corr.set_title("Return Correlation Matrix", pad=10, fontsize=10)
+
         fig_corr.tight_layout()
         st.pyplot(fig_corr)
+
     else:
         st.info("Not enough data for performance & risk analytics.")
