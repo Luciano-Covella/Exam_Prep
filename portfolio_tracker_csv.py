@@ -174,7 +174,7 @@ if st.session_state.theme == "Dark":
     st.markdown(
         """
         <style>
-        /* Main container background and all text to white */
+        /* Main container background and all text white */
         [data-testid="stAppViewContainer"] {
             background-color: #0E1117;
             color: #FAFAFA;
@@ -216,38 +216,27 @@ if st.session_state.theme == "Dark":
         .stSelectbox>div>div>div>div, .stRadio>div>label {
             color: #FAFAFA !important;
         }
-        /* Uploader container background for maximum contrast */
+        /* File uploader drop container style */
         [data-testid="stFileUploaderDropContainer"] {
-            background-color: #333333 !important;
-            border: 1px dashed #666666 !important;
+            /* Keep default light background for contrast */
+            background-color: #F0F2F6 !important;
+            border: 1px dashed #888 !important;
         }
-        [data-testid="stFileUploaderContainer"] {
-            background-color: #333333 !important;
-        }
-        /* Force ALL uploader text/icons to solid black */
-        [data-testid="stFileUploaderDropContainer"] * {
-            color: #000000 !important;
-        }
-        /* Specifically override the “Drag and Drop file here – Limit 200MB per file • CSV” text */
+        /* Force the upload‐box placeholder text dark */
         [data-testid="stFileUploaderDropContainer"] > div > div > p {
             color: #000000 !important;
             font-weight: 500 !important;
         }
-        /* Make the cloud emoji/icon black, too */
+        /* Force the cloud icon dark */
         [data-testid="stFileUploaderDropContainer"] svg,
         [data-testid="stFileUploaderDropContainer"] span.ec-icon {
             color: #000000 !important;
         }
-        /* Browse files button inside uploader */
+        /* "Browse files" button: maintain dark theme style */
         [data-testid="stFileUploaderDropContainer"] button {
             background-color: #444444 !important;
             color: #FFFFFF !important;
             border: 1px solid #666666 !important;
-        }
-        /* Placeholder text */
-        [data-testid="stFileUploaderDropContainer"] p,
-        [data-testid="stFileUploaderDropContainer"] span {
-            color: #000000 !important;
         }
         </style>
         """,
