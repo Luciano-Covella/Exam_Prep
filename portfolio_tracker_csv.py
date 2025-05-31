@@ -216,32 +216,30 @@ if st.session_state.theme == "Dark":
         .stSelectbox>div>div>div>div, .stRadio>div>label {
             color: #FAFAFA !important;
         }
-        /* File uploader container background for better contrast */
+        /* File uploader container background for maximum contrast */
         [data-testid="stFileUploaderDropContainer"] {
-            background-color: #1E1E1E !important;
-            border: 1px dashed #444 !important;
+            background-color: #333333 !important;
+            border: 1px dashed #666666 !important;
         }
-        [data-testid="stFileUploaderContainer"] {
-            background-color: #1E1E1E !important;
-        }
+        /* Explicitly set uploader text to pure white */
         [data-testid="stFileUploaderDropContainer"] * {
-            color: #E0E0E0 !important;
+            color: #FFFFFF !important;
         }
-        /* Emoji and cloud icon within uploader text */
+        /* Cloud icon color */
         [data-testid="stFileUploaderDropContainer"] svg, 
         [data-testid="stFileUploaderDropContainer"] span.ec-icon {
-            color: #CCCCCC !important;
+            color: #FFFFFF !important;
         }
         /* Browse files button inside uploader */
         [data-testid="stFileUploaderDropContainer"] button {
-            background-color: #2A2A2A !important;
-            color: #FAFAFA !important;
-            border: 1px solid #555 !important;
+            background-color: #444444 !important;
+            color: #FFFFFF !important;
+            border: 1px solid #666666 !important;
         }
-        /* Placeholder text in uploader */
+        /* Placeholder text */
         [data-testid="stFileUploaderDropContainer"] p, 
         [data-testid="stFileUploaderDropContainer"] span {
-            color: #E0E0E0 !important;
+            color: #EAEAEA !important;
         }
         </style>
         """,
