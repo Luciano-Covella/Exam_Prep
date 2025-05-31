@@ -174,7 +174,7 @@ with st.sidebar:
 st.markdown(
     """
     <style>
-    /* Increase metric label font and value font for balance */
+    /* Metric label font and value font */
     .css-10trblm {
         font-size: 1.2rem !important;   /* Metric title */
     }
@@ -379,8 +379,7 @@ if menu_option == TEXT["menu_overview"]:
     st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
     st.subheader(TEXT["allocation_by_value_label"])
     fig_value, ax_value = plt.subplots(figsize=(4, 2.5))
-    num_positions = len(df_portfolio)
-    font_size = max(5, 10 - num_positions // 2)
+    # Force small label fonts inside pie; use subheader as chart title
     wedges_value, texts_value, autotexts_value = ax_value.pie(
         df_portfolio["Value"],
         labels=df_portfolio["Ticker"],
@@ -388,8 +387,11 @@ if menu_option == TEXT["menu_overview"]:
         startangle=140,
         colors=PIE_CHART_COLORS,
     )
-    for txt in texts_value + autotexts_value:
-        txt.set_fontsize(font_size)
+    # Set label font sizes uniformly small
+    for t in texts_value:
+        t.set_fontsize(6)
+    for at in autotexts_value:
+        at.set_fontsize(5)
     ax_value.axis("equal")
     fig_value.tight_layout()
     st.pyplot(fig_value)
@@ -408,8 +410,10 @@ if menu_option == TEXT["menu_overview"]:
             startangle=140,
             colors=PIE_CHART_COLORS,
         )
-        for txt in texts_sector + autotexts_sector:
-            txt.set_fontsize(font_size)
+        for t in texts_sector:
+            t.set_fontsize(6)
+        for at in autotexts_sector:
+            at.set_fontsize(5)
         ax_sector.axis("equal")
         fig_sector.tight_layout()
         st.pyplot(fig_sector)
@@ -478,52 +482,55 @@ elif menu_option == TEXT["menu_analytics"]:
         income_yield_pct = (total_income_last_year / total_portfolio_value) * 100 if total_portfolio_value else 0.0
 
         # ----------------------------------------
-        # Portfolio Summary Metrics (larger text)
+        # Portfolio Summary Metrics
         # ----------------------------------------
         st.subheader(TEXT["portfolio_summary"])
-        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)  # small spacer
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-        row1_cols = st.columns(4)
+        row1_cols = st.columns([1, 1, 1, 1])
         row1_cols[0].metric(TEXT["total_return_label"], f"{total_return_pct:.2f}%")
         row1_cols[1].metric(TEXT["cagr_label"], f"{cagr * 100:.2f}%" if not np.isnan(cagr) else "N/A")
         row1_cols[2].metric(TEXT["volatility_label"], f"{portfolio_volatility:.2f}")
         row1_cols[3].metric(TEXT["beta_label"], f"{portfolio_beta:.2f}")
 
-        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)  # small spacer
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-        row2_cols = st.columns(4)
+        row2_cols = st.columns([1, 1, 1, 1])
         row2_cols[0].metric(TEXT["income_yield_label"], f"{income_yield_pct:.2f}%")
         row2_cols[1].metric(TEXT["max_drawdown_label"], f"{max_drawdown:.2f}")
         row2_cols[2].metric(TEXT["sharpe_label"], f"{sharpe_ratio:.2f}")
         row2_cols[3].metric(TEXT["sortino_label"], f"{sortino_ratio:.2f}")
 
         # ------------------------------------------------
-        # Cumulative Return Chart (smaller, professional)
+        # Cumulative Return Chart
         # ------------------------------------------------
         st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
         st.subheader(TEXT["cumulative_return_label"])
 
         fig_cum, ax_cum = plt.subplots(figsize=(4, 2.5))
-        ax_cum.plot((1 + portfolio_returns).cumprod(), label="Portfolio", linewidth=2)
+        ax_cum.plot((1 + portfolio_returns).cumprod(), label="Portfolio", linewidth=2, color="#1f77b4")
         sp_returns = benchmark_returns
-        ax_cum.plot((1 + sp_returns).cumprod(), linestyle="--", label="S&P 500")
+        ax_cum.plot((1 + sp_returns).cumprod(), linestyle="--", label="S&P 500", color="#ff7f0e")
         gold_hist = get_price_history("GLD", analysis_start, analysis_end)
         gold_returns = gold_hist["Close"].pct_change().dropna()
-        ax_cum.plot((1 + gold_returns).cumprod(), linestyle="--", label="Gold (GLD)")
+        ax_cum.plot((1 + gold_returns).cumprod(), linestyle="--", label="Gold (GLD)", color="#2ca02c")
         btc_hist = get_price_history("BTC-USD", analysis_start, analysis_end)
         btc_returns = btc_hist["Close"].pct_change().dropna()
-        ax_cum.plot((1 + btc_returns).cumprod(), linestyle="--", label="Bitcoin (BTC-USD)")
+        ax_cum.plot((1 + btc_returns).cumprod(), linestyle="--", label="Bitcoin (BTC-USD)", color="#d62728")
 
-        ax_cum.set_xlabel("Date", fontsize=7)
-        ax_cum.set_ylabel("Cumulative Return", fontsize=7)
-        ax_cum.tick_params(axis='x', labelsize=5)
-        ax_cum.tick_params(axis='y', labelsize=5)
+        ax_cum.set_title("Cumulative Return", fontsize=12, pad=10)
+        ax_cum.set_xlabel("Date", fontsize=6)
+        ax_cum.set_ylabel("Cum. Return", fontsize=6)
+        ax_cum.tick_params(axis="x", labelsize=5, rotation=45)
+        ax_cum.tick_params(axis="y", labelsize=5)
+        ax_cum.spines["top"].set_visible(False)
+        ax_cum.spines["right"].set_visible(False)
         ax_cum.legend(fontsize=6, loc="upper left")
         fig_cum.tight_layout()
         st.pyplot(fig_cum)
 
         # ------------------------------------------------
-        # Received Dividends Chart (smaller)
+        # Received Dividends Chart
         # ------------------------------------------------
         st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
         st.subheader(TEXT["received_dividends_label"])
@@ -537,11 +544,14 @@ elif menu_option == TEXT["menu_analytics"]:
         if not dividends_df.empty:
             fig_div, ax_div = plt.subplots(figsize=(4, 2.5))
             dividends_df.plot(kind="bar", stacked=True, ax=ax_div, color=PIE_CHART_COLORS)
-            ax_div.set_xlabel("Year", fontsize=7)
-            ax_div.set_ylabel("Dividends (€)", fontsize=7)
-            ax_div.tick_params(axis='x', labelsize=5)
-            ax_div.tick_params(axis='y', labelsize=5)
-            ax_div.set_title(TEXT["annual_dividends_chart_title"], fontsize=8)
+
+            ax_div.set_title(TEXT["annual_dividends_chart_title"], fontsize=12, pad=10)
+            ax_div.set_xlabel("Year", fontsize=6)
+            ax_div.set_ylabel("Dividends (€)", fontsize=6)
+            ax_div.tick_params(axis="x", labelsize=5, rotation=45)
+            ax_div.tick_params(axis="y", labelsize=5)
+            ax_div.spines["top"].set_visible(False)
+            ax_div.spines["right"].set_visible(False)
             legend = ax_div.legend(fontsize=6, loc="upper left", bbox_to_anchor=(1.02, 1))
             fig_div.subplots_adjust(right=0.7)
             fig_div.tight_layout()
@@ -550,7 +560,7 @@ elif menu_option == TEXT["menu_analytics"]:
             st.info(TEXT["no_dividends_message"])
 
         # ------------------------------------------------
-        # Return Correlation Matrix (smaller)
+        # Return Correlation Matrix
         # ------------------------------------------------
         st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
         st.subheader("Return Correlation Matrix")
@@ -568,12 +578,14 @@ elif menu_option == TEXT["menu_analytics"]:
         cax = ax_corr.matshow(corr_matrix, cmap="viridis")
         fig_corr.colorbar(cax, fraction=0.046, pad=0.04)
 
+        ax_corr.set_title("Correlation Matrix", pad=10, fontsize=12)
         ax_corr.set_xticks(range(len(corr_matrix.columns)))
         ax_corr.set_yticks(range(len(corr_matrix.index)))
         ax_corr.set_xticklabels(corr_matrix.columns, rotation=90, fontsize=5)
         ax_corr.set_yticklabels(corr_matrix.index, fontsize=5)
-        ax_corr.set_title("Return Correlation Matrix", pad=10, fontsize=8)
-
+        ax_corr.tick_params(length=0)
+        ax_corr.spines["top"].set_visible(False)
+        ax_corr.spines["right"].set_visible(False)
         fig_corr.tight_layout()
         st.pyplot(fig_corr)
 
