@@ -38,7 +38,6 @@ TEXT = {
     "summary_subheader": "Summary",
     "allocation_by_value_label": "Allocation by Value",
     "allocation_by_sector_label": "Allocation by Sector",
-    "allocation_by_industry_label": "Allocation by Industry",
     "portfolio_summary": "Portfolio Summary",
     "total_return_label": "Total Return (%)",
     "cagr_label": "CAGR (%)",
@@ -446,27 +445,6 @@ if menu_option == TEXT["menu_overview"]:
     else:
         st.info("No sector data available.")
 
-    # Allocation by Industry Pie Chart
-    st.subheader(TEXT["allocation_by_industry_label"])
-    industry_alloc = (
-        df_portfolio.groupby("Industry")["Value"].sum().reset_index().sort_values("Value", ascending=False)
-    )
-    if not industry_alloc.empty:
-        fig_ind, ax_ind = plt.subplots(figsize=(5, 3))
-        wedges_ind, texts_ind, autotexts_ind = ax_ind.pie(
-            industry_alloc["Value"],
-            labels=industry_alloc["Industry"],
-            autopct="%1.1f%%",
-            startangle=140,
-            colors=PIE_CHART_COLORS,
-        )
-        for txt in texts_ind + autotexts_ind:
-            txt.set_fontsize(font_size)
-        ax_ind.axis("equal")
-        st.pyplot(fig_ind)
-    else:
-        st.info("No industry data available.")
-
 # ===============================
 # Performance & Risk Analytics Section
 # ===============================
@@ -507,7 +485,7 @@ elif menu_option == TEXT["menu_analytics"]:
         downside_std = portfolio_returns[portfolio_returns < 0].std() * np.sqrt(252)
         sortino_ratio = (portfolio_mean / downside_std) if downside_std != 0 else np.nan
 
-        # Max Drawdown & Drawdown Duration
+        # Max Drawdown
         max_drawdown = calculate_max_drawdown(portfolio_returns)
 
         # CAGR & Total Return
