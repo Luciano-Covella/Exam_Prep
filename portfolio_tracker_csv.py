@@ -136,7 +136,7 @@ def validate_portfolio_df(df: pd.DataFrame) -> None:
 # ====================================
 st.set_page_config(page_title=TEXT["app_title"], layout="wide")
 
-# Initialize session state
+# Initialize session state for portfolio DataFrame & theme
 if "portfolio_df" not in st.session_state:
     st.session_state.portfolio_df = None
     st.session_state.portfolio_filename = None
@@ -145,7 +145,7 @@ if "portfolio_df" not in st.session_state:
 if "theme" not in st.session_state:
     st.session_state.theme = "Light"
 
-# Sidebar
+# Sidebar: Navigation, Theme Toggle, and Captions
 with st.sidebar:
     st.title(TEXT["sidebar_title"])
     menu_option = st.radio(
@@ -168,7 +168,9 @@ with st.sidebar:
     if st.session_state.portfolio_filename:
         st.caption(f"{TEXT['file_name']}: {st.session_state.portfolio_filename}")
 
-# Only inject Dark‐Mode CSS when we are *not* on the Upload page
+# ================================
+# Apply Dark‐Mode CSS (except on Upload page)
+# ================================
 if st.session_state.theme == "Dark" and menu_option != TEXT["menu_upload"]:
     st.markdown(
         """
@@ -221,16 +223,14 @@ if st.session_state.theme == "Dark" and menu_option != TEXT["menu_upload"]:
     )
 
 # ====================================
-# Upload CSV Section
+# Upload CSV Section (Main Area)
 # ====================================
 if menu_option == TEXT["menu_upload"]:
     st.title(TEXT["upload_csv_title"])
     st.info(TEXT["upload_csv_info"])
 
-    # *No dark‐mode CSS is injected here,* so the uploader retains its standard
-    # light styling (white background / black text) automatically.
+    # No Dark‐Mode CSS here, so uploader uses default light styling
     uploaded_file = st.file_uploader(TEXT["upload_button_label"], type=["csv"])
-
     if uploaded_file:
         try:
             raw_df = pd.read_csv(uploaded_file)
@@ -244,20 +244,265 @@ if menu_option == TEXT["menu_upload"]:
             st.error(f"{TEXT['upload_error']} {ve}")
         except Exception as e:
             st.error(f"{TEXT['upload_error']} {e}")
-
     if st.session_state.portfolio_df is None:
         st.stop()
 
-# Pull in the DataFrame or show an info message
+# Retrieve the stored DataFrame or show info if none
 df_portfolio = st.session_state.portfolio_df
 today_date = datetime.today().date()
 if df_portfolio is None and menu_option in [TEXT["menu_overview"], TEXT["menu_analytics"]]:
     st.info(TEXT["no_portfolio_message"])
     st.stop()
 
-# ------------------------------------------------------------
-# From here on, you can continue with the “overview” and “analytics”
-# logic exactly as before—fetch prices, compute metrics, etc.
-# (Omitted for brevity, since the question was all about the                
-#  uploader box in Dark Mode.)
-# ------------------------------------------------------------
+# ====================================
+# Fetch per‐ticker data (Overview & Analytics)
+# ====================================
+unique_tickers = df_portfolio["Ticker"].unique().tolist()
+analysis_start = df_portfolio["Buy Date"].min().date()
+analysis_end = today_date
+
+benchmark_history = get_price_history(BENCHMARK_TICKER, analysis_start, analysis_end)
+benchmark_returns = benchmark_history["Close"].pct_change().dropna()
+
+names_map: Dict[str, str] = {}
+prices_map: Dict[str, float] = {}
+dividends_map: Dict[str, pd.Series] = {}
+price_histories: Dict[str, pd.DataFrame] = {}
+info_map: Dict[str, Dict[str, Any]] = {}
+risk_metrics_map: Dict[str, Dict[str, float]] = {}
+
+for idx, ticker_symbol in enumerate(unique_tickers, start=1):
+    with st.spinner(f"Fetching data for {ticker_symbol} ({idx}/{len(unique_tickers)}) …"):
+        try:
+            stock = yf.Ticker(ticker_symbol)
+            info = stock.info
+            info_map[ticker_symbol] = info
+
+            names_map[ticker_symbol] = info.get("shortName", ticker_symbol)
+            hist_df = get_price_history(ticker_symbol, analysis_start, analysis_end)
+            price_histories[ticker_symbol] = hist_df
+            prices_map[ticker_symbol] = hist_df["Close"].iloc[-1] if not hist_df.empty else np.nan
+
+            buy_date_min = df_portfolio.loc[df_portfolio["Ticker"] == ticker_symbol, "Buy Date"].min().date()
+            dividends_map[ticker_symbol] = fetch_annual_dividends(ticker_symbol, buy_date_min, today_date)
+
+            risk_metrics_map[ticker_symbol] = compute_risk_metrics(hist_df, benchmark_returns)
+        except Exception:
+            names_map[ticker_symbol] = ticker_symbol
+            prices_map[ticker_symbol] = np.nan
+            dividends_map[ticker_symbol] = pd.Series(dtype=float)
+            info_map[ticker_symbol] = {}
+            risk_metrics_map[ticker_symbol] = {"volatility": np.nan, "beta": np.nan}
+
+# Populate DataFrame with calculated columns
+df_portfolio["Current"] = df_portfolio["Ticker"].map(prices_map)
+df_portfolio["Value"] = df_portfolio["Current"] * df_portfolio["Shares"]
+df_portfolio["Invested"] = df_portfolio["Buy Price"] * df_portfolio["Shares"]
+df_portfolio["Abs Perf"] = df_portfolio["Value"] - df_portfolio["Invested"]
+df_portfolio["Rel Perf"] = df_portfolio["Abs Perf"] / df_portfolio["Invested"]
+df_portfolio["Name"] = df_portfolio["Ticker"].map(names_map)
+df_portfolio["Sector"] = df_portfolio["Ticker"].map(lambda t: info_map.get(t, {}).get("sector", "N/A"))
+df_portfolio["Industry"] = df_portfolio["Ticker"].map(lambda t: info_map.get(t, {}).get("industry", "N/A"))
+df_portfolio["P/E"] = df_portfolio["Ticker"].map(lambda t: info_map.get(t, {}).get("trailingPE", np.nan))
+df_portfolio["Market Cap"] = df_portfolio["Ticker"].map(lambda t: info_map.get(t, {}).get("marketCap", np.nan))
+df_portfolio["Dividend Yield (%)"] = df_portfolio["Ticker"].map(
+    lambda t: info_map.get(t, {}).get("dividendYield", 0.0) * 100
+)
+df_portfolio["P/B"] = df_portfolio["Ticker"].map(lambda t: info_map.get(t, {}).get("priceToBook", np.nan))
+
+total_portfolio_value = df_portfolio["Value"].sum()
+total_portfolio_pl = df_portfolio["Abs Perf"].sum()
+
+# ====================================
+# Portfolio Overview Section
+# ====================================
+if menu_option == TEXT["menu_overview"]:
+    st.title(TEXT["overview_title"])
+
+    overview_df = df_portfolio[["Name", "Ticker", "Value", "Abs Perf", "Rel Perf", "Sector", "Industry"]].copy()
+    overview_df.rename(
+        columns={
+            "Value": TEXT["position_size_label"],
+            "Abs Perf": TEXT["absolute_perf_label"],
+            "Rel Perf": TEXT["relative_perf_label"],
+            "Sector": "Sector",
+            "Industry": "Industry",
+        },
+        inplace=True,
+    )
+    overview_df[TEXT["relative_perf_label"]] *= 100
+
+    st.dataframe(
+        overview_df.style.format(
+            {
+                TEXT["position_size_label"]: "€{:.2f}",
+                TEXT["absolute_perf_label"]: "€{:.2f}",
+                TEXT["relative_perf_label"]: "{:.2f}%",
+            }
+        ),
+        use_container_width=True,
+    )
+
+    st.subheader(TEXT["summary_subheader"])
+    col1, col2 = st.columns(2)
+    col1.metric("Total Value", f"€{total_portfolio_value:.2f}")
+    col2.metric("Total P/L", f"€{total_portfolio_pl:.2f}")
+
+    st.subheader(TEXT["allocation_by_value_label"])
+    fig_value, ax_value = plt.subplots(figsize=(5, 3))
+    num_positions = len(df_portfolio)
+    font_size = max(6, 12 - num_positions // 2)
+    wedges_value, texts_value, autotexts_value = ax_value.pie(
+        df_portfolio["Value"],
+        labels=df_portfolio["Ticker"],
+        autopct="%1.1f%%",
+        startangle=140,
+        colors=PIE_CHART_COLORS,
+    )
+    for txt in texts_value + autotexts_value:
+        txt.set_fontsize(font_size)
+    ax_value.axis("equal")
+    st.pyplot(fig_value)
+
+    st.subheader(TEXT["allocation_by_sector_label"])
+    sector_alloc = (
+        df_portfolio.groupby("Sector")["Value"].sum().reset_index().sort_values("Value", ascending=False)
+    )
+    if not sector_alloc.empty:
+        fig_sector, ax_sector = plt.subplots(figsize=(5, 3))
+        wedges_sector, texts_sector, autotexts_sector = ax_sector.pie(
+            sector_alloc["Value"],
+            labels=sector_alloc["Sector"],
+            autopct="%1.1f%%",
+            startangle=140,
+            colors=PIE_CHART_COLORS,
+        )
+        for txt in texts_sector + autotexts_sector:
+            txt.set_fontsize(font_size)
+        ax_sector.axis("equal")
+        st.pyplot(fig_sector)
+    else:
+        st.info("No sector data available.")
+
+# ====================================
+# Performance & Risk Analytics Section
+# ====================================
+elif menu_option == TEXT["menu_analytics"]:
+    st.title(TEXT["analytics_title"])
+
+    returns_list = []
+    for ticker_symbol in unique_tickers:
+        price_history = price_histories.get(ticker_symbol, pd.DataFrame())
+        daily_returns = price_history["Close"].pct_change().dropna() if not price_history.empty else pd.Series(dtype=float)
+        returns_list.append(daily_returns)
+
+        metrics = risk_metrics_map.get(ticker_symbol, {"volatility": np.nan, "beta": np.nan})
+        pe_ratio = df_portfolio.loc[df_portfolio["Ticker"] == ticker_symbol, "P/E"].iloc[0]
+        market_cap_value = df_portfolio.loc[df_portfolio["Ticker"] == ticker_symbol, "Market Cap"].iloc[0]
+        market_cap_str = format_market_cap(market_cap_value)
+        dividend_yield = df_portfolio.loc[df_portfolio["Ticker"] == ticker_symbol, "Dividend Yield (%)"].iloc[0]
+        pb_ratio = df_portfolio.loc[df_portfolio["Ticker"] == ticker_symbol, "P/B"].iloc[0]
+
+        with st.expander(f"{names_map.get(ticker_symbol, ticker_symbol)} ({ticker_symbol})"):
+            st.write(f"P/E Ratio: {pe_ratio:.2f}")
+            st.write(f"P/B Ratio: {pb_ratio:.2f}")
+            st.write(f"Dividend Yield: {dividend_yield:.2f}%")
+            st.write(f"Market Cap: {market_cap_str}")
+            st.write(f"Volatility: {metrics['volatility']:.4f}")
+            st.write(f"Beta: {metrics['beta']:.4f}")
+
+    if returns_list:
+        portfolio_returns = pd.concat(returns_list, axis=1).mean(axis=1).dropna()
+        portfolio_mean = portfolio_returns.mean()
+        portfolio_std = portfolio_returns.std()
+        sharpe_ratio = (portfolio_mean / portfolio_std) * np.sqrt(252) if portfolio_std != 0 else np.nan
+        downside_std = portfolio_returns[portfolio_returns < 0].std() * np.sqrt(252)
+        sortino_ratio = (portfolio_mean / downside_std) if downside_std != 0 else np.nan
+        max_drawdown = calculate_max_drawdown(portfolio_returns)
+
+        num_days = (portfolio_returns.index[-1] - portfolio_returns.index[0]).days
+        num_years = num_days / 365.25 if num_days > 0 else np.nan
+        cumulative_return = (1 + portfolio_returns).prod()
+        cagr = calculate_cagr(1, cumulative_return, num_years) if num_years > 0 else np.nan
+        total_return_pct = (cumulative_return - 1) * 100 if not np.isnan(cumulative_return) else np.nan
+
+        portfolio_volatility = portfolio_std * np.sqrt(252)
+        paired_portfolio = pd.concat([portfolio_returns, benchmark_returns], axis=1).dropna()
+        portfolio_beta = linregress(paired_portfolio.iloc[:, 1], paired_portfolio.iloc[:, 0])[0] if not paired_portfolio.empty else np.nan
+
+        previous_year = today_date.year - 1
+        total_income_last_year = sum(
+            dividends_map[ticker_symbol].get(previous_year, 0)
+            * df_portfolio.loc[df_portfolio["Ticker"] == ticker_symbol, "Shares"].iloc[0]
+            for ticker_symbol in unique_tickers
+        )
+        income_yield_pct = (total_income_last_year / total_portfolio_value) * 100 if total_portfolio_value else 0.0
+
+        st.subheader(TEXT["portfolio_summary"])
+        row1_cols = st.columns(4)
+        row1_cols[0].metric(TEXT["total_return_label"], f"{total_return_pct:.2f}%")
+        row1_cols[1].metric(TEXT["cagr_label"], f"{cagr * 100:.2f}%" if not np.isnan(cagr) else "N/A")
+        row1_cols[2].metric(TEXT["volatility_label"], f"{portfolio_volatility:.2f}")
+        row1_cols[3].metric(TEXT["beta_label"], f"{portfolio_beta:.2f}")
+
+        row2_cols = st.columns(4)
+        row2_cols[0].metric(TEXT["income_yield_label"], f"{income_yield_pct:.2f}%")
+        row2_cols[1].metric(TEXT["max_drawdown_label"], f"{max_drawdown:.2f}")
+        row2_cols[2].metric(TEXT["sharpe_label"], f"{sharpe_ratio:.2f}")
+        row2_cols[3].metric(TEXT["sortino_label"], f"{sortino_ratio:.2f}")
+
+        st.subheader(TEXT["cumulative_return_label"])
+        fig_cum, ax_cum = plt.subplots(figsize=(5, 3))
+        ax_cum.plot((1 + portfolio_returns).cumprod(), label="Portfolio", linewidth=2)
+        sp_returns = benchmark_returns
+        ax_cum.plot((1 + sp_returns).cumprod(), linestyle="--", label="S&P 500")
+        gold_hist = get_price_history("GLD", analysis_start, analysis_end)
+        gold_returns = gold_hist["Close"].pct_change().dropna()
+        ax_cum.plot((1 + gold_returns).cumprod(), linestyle="--", label="Gold (GLD)")
+        btc_hist = get_price_history("BTC-USD", analysis_start, analysis_end)
+        btc_returns = btc_hist["Close"].pct_change().dropna()
+        ax_cum.plot((1 + btc_returns).cumprod(), linestyle="--", label="Bitcoin (BTC-USD)")
+        ax_cum.set_xlabel("Date")
+        ax_cum.set_ylabel("Cumulative Return")
+        ax_cum.legend(fontsize=8)
+        st.pyplot(fig_cum)
+
+        st.subheader(TEXT["received_dividends_label"])
+        dividends_adjusted: Dict[str, pd.Series] = {}
+        for ticker_symbol, dividends_series in dividends_map.items():
+            shares_count = df_portfolio.loc[df_portfolio["Ticker"] == ticker_symbol, "Shares"].iloc[0]
+            dividends_adjusted[ticker_symbol] = dividends_series * shares_count
+        dividends_df = pd.DataFrame(dividends_adjusted).fillna(0).sort_index()
+        if not dividends_df.empty:
+            fig_div, ax_div = plt.subplots(figsize=(5, 3))
+            dividends_df.plot(kind="bar", stacked=True, ax=ax_div, color=PIE_CHART_COLORS)
+            ax_div.set_xlabel("Year")
+            ax_div.set_ylabel("Dividends (€)")
+            ax_div.set_title(TEXT["annual_dividends_chart_title"])
+            legend = ax_div.legend(fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1))
+            fig_div.subplots_adjust(right=0.8)
+            st.pyplot(fig_div)
+        else:
+            st.info(TEXT["no_dividends_message"])
+
+        # Show correlation matrix by default
+        st.subheader("Return Correlation Matrix")
+        all_returns_df = pd.DataFrame(
+            {
+                ticker_symbol: price_histories[ticker_symbol]["Close"].pct_change()
+                for ticker_symbol in unique_tickers
+                if not price_histories[ticker_symbol].empty
+            }
+        )
+        corr_matrix = all_returns_df.corr().fillna(0)
+        fig_corr, ax_corr = plt.subplots(figsize=(8, 6))
+        cax = ax_corr.matshow(corr_matrix, cmap="viridis")
+        fig_corr.colorbar(cax)
+        ax_corr.set_xticks(range(len(corr_matrix.columns)))
+        ax_corr.set_yticks(range(len(corr_matrix.index)))
+        ax_corr.set_xticklabels(corr_matrix.columns, rotation=90, fontsize=8)
+        ax_corr.set_yticklabels(corr_matrix.index, fontsize=8)
+        ax_corr.set_title("Return Correlation Matrix", pad=20)
+        st.pyplot(fig_corr)
+    else:
+        st.info("Not enough data for performance & risk analytics.")
