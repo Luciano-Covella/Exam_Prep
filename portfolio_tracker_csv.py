@@ -378,9 +378,9 @@ if menu_option == TEXT["menu_overview"]:
 
     st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
     st.subheader(TEXT["allocation_by_value_label"])
-    fig_value, ax_value = plt.subplots(figsize=(4, 2.5))  # smaller, professional size
+    fig_value, ax_value = plt.subplots(figsize=(4, 2.5))
     num_positions = len(df_portfolio)
-    font_size = max(6, 12 - num_positions // 2)
+    font_size = max(5, 10 - num_positions // 2)
     wedges_value, texts_value, autotexts_value = ax_value.pie(
         df_portfolio["Value"],
         labels=df_portfolio["Ticker"],
@@ -400,7 +400,7 @@ if menu_option == TEXT["menu_overview"]:
         df_portfolio.groupby("Sector")["Value"].sum().reset_index().sort_values("Value", ascending=False)
     )
     if not sector_alloc.empty:
-        fig_sector, ax_sector = plt.subplots(figsize=(4, 2.5))  # smaller size
+        fig_sector, ax_sector = plt.subplots(figsize=(4, 2.5))
         wedges_sector, texts_sector, autotexts_sector = ax_sector.pie(
             sector_alloc["Value"],
             labels=sector_alloc["Sector"],
@@ -514,9 +514,11 @@ elif menu_option == TEXT["menu_analytics"]:
         btc_returns = btc_hist["Close"].pct_change().dropna()
         ax_cum.plot((1 + btc_returns).cumprod(), linestyle="--", label="Bitcoin (BTC-USD)")
 
-        ax_cum.set_xlabel("Date", fontsize=8)
-        ax_cum.set_ylabel("Cumulative Return", fontsize=8)
-        ax_cum.legend(fontsize=7, loc="upper left")
+        ax_cum.set_xlabel("Date", fontsize=7)
+        ax_cum.set_ylabel("Cumulative Return", fontsize=7)
+        ax_cum.tick_params(axis='x', labelsize=5)
+        ax_cum.tick_params(axis='y', labelsize=5)
+        ax_cum.legend(fontsize=6, loc="upper left")
         fig_cum.tight_layout()
         st.pyplot(fig_cum)
 
@@ -535,10 +537,12 @@ elif menu_option == TEXT["menu_analytics"]:
         if not dividends_df.empty:
             fig_div, ax_div = plt.subplots(figsize=(4, 2.5))
             dividends_df.plot(kind="bar", stacked=True, ax=ax_div, color=PIE_CHART_COLORS)
-            ax_div.set_xlabel("Year", fontsize=8)
-            ax_div.set_ylabel("Dividends (€)", fontsize=8)
-            ax_div.set_title(TEXT["annual_dividends_chart_title"], fontsize=10)
-            legend = ax_div.legend(fontsize=7, loc="upper left", bbox_to_anchor=(1.02, 1))
+            ax_div.set_xlabel("Year", fontsize=7)
+            ax_div.set_ylabel("Dividends (€)", fontsize=7)
+            ax_div.tick_params(axis='x', labelsize=5)
+            ax_div.tick_params(axis='y', labelsize=5)
+            ax_div.set_title(TEXT["annual_dividends_chart_title"], fontsize=8)
+            legend = ax_div.legend(fontsize=6, loc="upper left", bbox_to_anchor=(1.02, 1))
             fig_div.subplots_adjust(right=0.7)
             fig_div.tight_layout()
             st.pyplot(fig_div)
@@ -566,9 +570,9 @@ elif menu_option == TEXT["menu_analytics"]:
 
         ax_corr.set_xticks(range(len(corr_matrix.columns)))
         ax_corr.set_yticks(range(len(corr_matrix.index)))
-        ax_corr.set_xticklabels(corr_matrix.columns, rotation=90, fontsize=6)
-        ax_corr.set_yticklabels(corr_matrix.index, fontsize=6)
-        ax_corr.set_title("Return Correlation Matrix", pad=10, fontsize=10)
+        ax_corr.set_xticklabels(corr_matrix.columns, rotation=90, fontsize=5)
+        ax_corr.set_yticklabels(corr_matrix.index, fontsize=5)
+        ax_corr.set_title("Return Correlation Matrix", pad=10, fontsize=8)
 
         fig_corr.tight_layout()
         st.pyplot(fig_corr)
