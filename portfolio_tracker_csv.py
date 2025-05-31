@@ -224,7 +224,7 @@ if st.session_state.theme == "Dark":
         [data-testid="stFileUploaderContainer"] {
             background-color: #333333 !important;
         }
-        /* Force all uploader text/icons to black */
+        /* Force ALL uploader text/icons to solid black */
         [data-testid="stFileUploaderDropContainer"] * {
             color: #000000 !important;
         }
