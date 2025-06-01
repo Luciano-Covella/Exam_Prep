@@ -177,26 +177,6 @@ st.markdown(
 )
 
 # ====================================
-# Dark-Mode CSS Overrides
-# Only applies if user has selected Dark mode and NOT on upload page
-# ====================================
-if st.session_state.theme == "Dark" and menu_option != TEXT["menu_upload"]:
-    st.markdown(
-        """
-        <style>
-        [data-testid="stAppViewContainer"] { background-color: #0E1117; color: #FAFAFA; }  /* Dark background and white text */
-        [data-testid="stAppViewContainer"] * { color: #FAFAFA !important; }  /* White text everywhere */
-        [data-testid="stSidebar"] { background-color: #171A21; color: #FAFAFA; }  /* Sidebar dark */
-        button, .stButton>button>div { background-color: #2A2A2A !important; border: 1px solid #555 !important; color: #FAFAFA !important; }
-        h1, h2, h3 { color: #FAFAFA !important; }  /* Headers white */
-        .css-1kyxreq { color: #FAFAFA !important; }  /* DataFrame text */
-        input, textarea, label, .stSelectbox>div>div>div>div, .stRadio>div>label { color: #FAFAFA !important; }  /* Form elements */
-        </style>
-        """,
-        unsafe_allow_html=True,  # Allow HTML for styling
-    )
-
-# ====================================
 # Upload CSV Section
 # ====================================
 if menu_option == TEXT["menu_upload"]:  # If user selected "Upload CSV" in sidebar
