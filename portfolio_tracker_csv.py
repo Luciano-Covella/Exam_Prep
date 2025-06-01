@@ -420,4 +420,3 @@ elif menu_option == TEXT["menu_analytics"]:  # If the user selected "Performance
         row2_cols[1].metric(TEXT["max_drawdown_label"], f"{max_drawdown:.2f}")
         row2_cols[2].metric(TEXT["sharpe_label"], f"{sharpe_ratio:.2f}")
         row2_cols[3].metric(TEXT["sortino_label"], f"{sortino_ratio:.2f}")
-        
