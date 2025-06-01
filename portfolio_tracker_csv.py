@@ -136,6 +136,7 @@ if "theme" not in st.session_state:
     st.session_state.theme = "Light"  # Default to light theme
 
 # Sidebar: Navigation, Theme Toggle, and Captions
+# Sidebar: Navigation and Captions (ohne Theme)
 with st.sidebar:
     st.title(TEXT["sidebar_title"])  # Sidebar title ("📊 Portfolio Menu")
     menu_option = st.radio(
@@ -143,15 +144,12 @@ with st.sidebar:
         [TEXT["menu_upload"], TEXT["menu_overview"], TEXT["menu_analytics"]],  # Options
     )
 
-    # Theme toggle: Light or Dark
-    theme_choice = st.radio(
-        "Theme",  # Label
-        ["Light", "Dark"],  # Choices
-        index=0 if st.session_state.theme == "Light" else 1,  # Default selection
-        key="theme_radio",  # Session key
-        help="Toggle between Light and Dark mode",  # Help text
-    )
-    st.session_state.theme = theme_choice  # Save selected theme in session state
+    # Show last updated timestamp if available
+    if st.session_state.last_updated:
+        st.caption(f"{TEXT['last_updated']}: {st.session_state.last_updated.strftime('%Y-%m-%d %H:%M:%S')}")
+    # Show uploaded file name if available
+    if st.session_state.portfolio_filename:
+        st.caption(f"{TEXT['file_name']}: {st.session_state.portfolio_filename}")
 
     # Show last updated timestamp if available
     if st.session_state.last_updated:
